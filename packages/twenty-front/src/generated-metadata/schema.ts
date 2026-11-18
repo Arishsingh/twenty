@@ -1599,6 +1599,7 @@ export type ClientConfig = {
   isCompanyEnrichmentEnabled: Scalars['Boolean']['output'];
   isConfigVariablesInDbEnabled: Scalars['Boolean']['output'];
   isCookieSessionEnabled: Scalars['Boolean']['output'];
+  isEmailDeliveryConfigured: Scalars['Boolean']['output'];
   isEmailVerificationRequired: Scalars['Boolean']['output'];
   isEmailingDomainInDemoMode: Scalars['Boolean']['output'];
   isGoogleCalendarEnabled: Scalars['Boolean']['output'];
@@ -6295,6 +6296,7 @@ export type Query = {
   getViewSorts: Array<ViewSort>;
   getViews: Array<View>;
   getWorkspaceCreationDefaults: WorkspaceCreationDefaultsDto;
+  getWorkspaceInvitationLink: Scalars['String']['output'];
   gettingStartedProgress: GettingStartedProgress;
   gettingStartedWorkflowPreviews: Array<GettingStartedWorkflowPreview>;
   githubClaimAuthorizationUrl: Scalars['String']['output'];
@@ -6767,6 +6769,11 @@ export type QueryGetViewSortsArgs = {
 export type QueryGetViewsArgs = {
   objectMetadataId?: InputMaybe<Scalars['String']['input']>;
   viewTypes?: InputMaybe<Array<ViewType>>;
+};
+
+
+export type QueryGetWorkspaceInvitationLinkArgs = {
+  appTokenId: Scalars['String']['input'];
 };
 
 
@@ -7383,6 +7390,8 @@ export type SendInboxMessageResult = {
 export type SendInvitations = {
   __typename?: 'SendInvitations';
   errors: Array<Scalars['String']['output']>;
+  /** Links to share with the invitees, only returned when no email provider is configured */
+  inviteLinks: Array<WorkspaceInvitationLink>;
   result: Array<WorkspaceInvitation>;
   /** Boolean that confirms query was dispatched */
   success: Scalars['Boolean']['output'];
@@ -9203,6 +9212,12 @@ export type WorkspaceInvitation = {
   expiresAt: Scalars['DateTime']['output'];
   id: Scalars['UUID']['output'];
   roleId?: Maybe<Scalars['UUID']['output']>;
+};
+
+export type WorkspaceInvitationLink = {
+  __typename?: 'WorkspaceInvitationLink';
+  email: Scalars['String']['output'];
+  link: Scalars['String']['output'];
 };
 
 export type WorkspaceInviteHashValid = {

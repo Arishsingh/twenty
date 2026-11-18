@@ -118,11 +118,11 @@ export default {
         702,
         704,
         707,
-        712,
         713,
         714,
-        717,
-        718
+        715,
+        718,
+        719
     ],
     "types": {
         "AccessGroupPropagationProgress": {
@@ -2164,7 +2164,7 @@ export default {
                 498
             ],
             "workspaceUrls": [
-                719
+                720
             ],
             "__typename": [
                 4
@@ -3207,6 +3207,9 @@ export default {
                 1
             ],
             "isCookieSessionEnabled": [
+                1
+            ],
+            "isEmailDeliveryConfigured": [
                 1
             ],
             "isEmailVerificationRequired": [
@@ -5637,7 +5640,7 @@ export default {
                 324
             ],
             "workspace": [
-                716
+                717
             ],
             "__typename": [
                 4
@@ -6089,7 +6092,7 @@ export default {
                 98
             ],
             "workspace": [
-                720
+                721
             ],
             "__typename": [
                 4
@@ -9487,7 +9490,7 @@ export default {
                 }
             ],
             "syncApplication": [
-                715,
+                716,
                 {
                     "dryRun": [
                         1
@@ -10128,7 +10131,7 @@ export default {
                 }
             ],
             "updateWorkspaceMemberRole": [
-                710,
+                711,
                 {
                     "roleId": [
                         565,
@@ -11388,7 +11391,7 @@ export default {
                 4
             ],
             "workspaceUrls": [
-                719
+                720
             ],
             "__typename": [
                 4
@@ -11670,7 +11673,7 @@ export default {
                 }
             ],
             "checkWorkspaceInviteHashIsValid": [
-                709,
+                710,
                 {
                     "inviteHash": [
                         4,
@@ -12309,6 +12312,15 @@ export default {
             "getWorkspaceCreationDefaults": [
                 706
             ],
+            "getWorkspaceInvitationLink": [
+                4,
+                {
+                    "appTokenId": [
+                        4,
+                        "String!"
+                    ]
+                }
+            ],
             "gettingStartedProgress": [
                 313
             ],
@@ -12418,7 +12430,7 @@ export default {
                 }
             ],
             "myUserApplicationVariables": [
-                711
+                712
             ],
             "navigationMenuItem": [
                 404,
@@ -12971,7 +12983,7 @@ export default {
                 565
             ],
             "workspaceMembers": [
-                710
+                711
             ],
             "__typename": [
                 4
@@ -13597,6 +13609,9 @@ export default {
             "errors": [
                 4
             ],
+            "inviteLinks": [
+                709
+            ],
             "result": [
                 708
             ],
@@ -13787,7 +13802,7 @@ export default {
                 98
             ],
             "workspace": [
-                720
+                721
             ],
             "__typename": [
                 4
@@ -13864,7 +13879,7 @@ export default {
         },
         "StartWorkspaceSetupChatResult": {
             "outcome": [
-                718
+                719
             ],
             "thread": [
                 18
@@ -16311,10 +16326,10 @@ export default {
                 669
             ],
             "workspaceMember": [
-                710
+                711
             ],
             "workspaceMembers": [
-                710
+                711
             ],
             "workspaces": [
                 669
@@ -16520,7 +16535,7 @@ export default {
                 98
             ],
             "workspaceUrls": [
-                719
+                720
             ],
             "__typename": [
                 4
@@ -17265,7 +17280,7 @@ export default {
                 8
             ],
             "workspaceUrls": [
-                719
+                720
             ],
             "__typename": [
                 4
@@ -17301,7 +17316,7 @@ export default {
                 344
             ],
             "personOutcome": [
-                717
+                718
             ],
             "__typename": [
                 4
@@ -17336,6 +17351,17 @@ export default {
                 4
             ]
         },
+        "WorkspaceInvitationLink": {
+            "email": [
+                4
+            ],
+            "link": [
+                4
+            ],
+            "__typename": [
+                4
+            ]
+        },
         "WorkspaceInviteHashValid": {
             "isValid": [
                 1
@@ -17355,7 +17381,7 @@ export default {
                 4
             ],
             "dateFormat": [
-                712
+                713
             ],
             "id": [
                 565
@@ -17367,7 +17393,7 @@ export default {
                 307
             ],
             "numberFormat": [
-                713
+                714
             ],
             "openRecordIn": [
                 426
@@ -17376,7 +17402,7 @@ export default {
                 480
             ],
             "timeFormat": [
-                714
+                715
             ],
             "timeZone": [
                 4
@@ -17454,7 +17480,7 @@ export default {
                 565
             ],
             "workspaceUrls": [
-                719
+                720
             ],
             "__typename": [
                 4
