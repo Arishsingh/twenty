@@ -1,20 +1,22 @@
 /* @license Enterprise */
 
 import { type ApplicationBillingPrice } from 'twenty-shared/application';
-import { assertUnreachable } from 'twenty-shared/utils';
+import { assertUnreachable, isDefined } from 'twenty-shared/utils';
 
 export const computeApplicationPriceQuantity = ({
   per,
   workspaceMemberCount,
   connectedAccountCount,
 }: {
-  per: ApplicationBillingPrice['per'];
+  per: ApplicationBillingPrice['per'] | null;
   workspaceMemberCount: number;
   connectedAccountCount: number;
 }): number => {
+  if (!isDefined(per)) {
+    return 1;
+  }
+
   switch (per) {
-    case undefined:
-      return 1;
     case 'WORKSPACE_MEMBER':
       return workspaceMemberCount;
     case 'CONNECTED_ACCOUNT':

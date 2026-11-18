@@ -111,25 +111,29 @@ export class BillingApplicationSubscriptionService {
       ? await this.billingSeatService.countWorkspaceMembers(workspaceId)
       : 0;
 
-    const quantifiedPrices = await Promise.all(
-      declaredPrices.map(async (declaredPrice) => ({
-        declaredPrice,
-        quantity: computeApplicationPriceQuantity({
-          per: declaredPrice.price.per,
-          workspaceMemberCount,
-          connectedAccountCount:
-            declaredPrice.price.per === 'CONNECTED_ACCOUNT'
-              ? await this.connectedAccountRepository.count({
-                  where: {
-                    workspaceId,
-                    applicationId: declaredPrice.applicationId,
-                    archivedAt: IsNull(),
-                  },
-                })
-              : 0,
-        }),
-      })),
-    );
+    const connectedAccountCountByApplicationId =
+      await this.countConnectedAccountsByApplicationId({
+        workspaceId,
+        applicationIds: [
+          ...new Set(
+            declaredPrices
+              .filter(({ price }) => price.per === 'CONNECTED_ACCOUNT')
+              .map(({ applicationId }) => applicationId),
+          ),
+        ],
+      });
+
+    const quantifiedPrices = declaredPrices.map((declaredPrice) => ({
+      declaredPrice,
+      quantity: computeApplicationPriceQuantity({
+        per: declaredPrice.price.per,
+        workspaceMemberCount,
+        connectedAccountCount:
+          connectedAccountCountByApplicationId.get(
+            declaredPrice.applicationId,
+          ) ?? 0,
+      }),
+    }));
 
     const applicationProducts = await Promise.all(
       quantifiedPrices
@@ -266,5 +270,33 @@ export class BillingApplicationSubscriptionService {
       workspaceId,
       stripeSubscriptionId: billingSubscription.stripeSubscriptionId,
     });
+  }
+
+  private async countConnectedAccountsByApplicationId({
+    workspaceId,
+    applicationIds,
+  }: {
+    workspaceId: string;
+    applicationIds: string[];
+  }): Promise<Map<string, number>> {
+    if (!isNonEmptyArray(applicationIds)) {
+      return new Map();
+    }
+
+    const rows = await this.connectedAccountRepository
+      .createQueryBuilder('connectedAccount')
+      .select('connectedAccount.applicationId', 'applicationId')
+      .addSelect('COUNT(*)', 'count')
+      .where({
+        workspaceId,
+        applicationId: In(applicationIds),
+        archivedAt: IsNull(),
+      })
+      .groupBy('connectedAccount.applicationId')
+      .getRawMany<{ applicationId: string; count: string }>();
+
+    return new Map(
+      rows.map(({ applicationId, count }) => [applicationId, Number(count)]),
+    );
   }
 }
