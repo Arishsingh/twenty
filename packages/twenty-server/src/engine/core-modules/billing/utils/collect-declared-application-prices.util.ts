@@ -7,7 +7,7 @@ import {
 import { isDefined } from 'twenty-shared/utils';
 
 import { ApplicationRegistrationSourceType } from 'src/engine/core-modules/application/application-registration/enums/application-registration-source-type.enum';
-import { type FlatApplicationCacheMaps } from 'src/engine/core-modules/application/types/flat-application-cache-maps.type';
+import { type FlatApplication } from 'src/engine/core-modules/application/types/flat-application.type';
 
 export type DeclaredApplicationPrice = {
   applicationUniversalIdentifier: string;
@@ -16,11 +16,25 @@ export type DeclaredApplicationPrice = {
 };
 
 // `billing` is jsonb persisted without a shape check, so prices are validated here, before they reach Stripe.
-// An application is billed once its install completed (version set), and never while synced from a local source.
 export const collectDeclaredApplicationPrices = ({
   flatApplicationMaps,
 }: {
-  flatApplicationMaps: FlatApplicationCacheMaps;
+  flatApplicationMaps: {
+    byId: Partial<
+      Record<
+        string,
+        Pick<
+          FlatApplication,
+          | 'universalIdentifier'
+          | 'name'
+          | 'version'
+          | 'sourceType'
+          | 'deletedAt'
+          | 'billing'
+        >
+      >
+    >;
+  };
 }): DeclaredApplicationPrice[] =>
   Object.values(flatApplicationMaps.byId)
     .filter(isDefined)

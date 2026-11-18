@@ -8,6 +8,7 @@ import {
   isDefined,
   isNonEmptyArray,
 } from 'twenty-shared/utils';
+import { FeatureFlagKey } from 'twenty-shared/types';
 import { In, Repository } from 'typeorm';
 
 import { BILLING_SUBSCRIPTION_STATE_LOCK_OPTIONS } from 'src/engine/core-modules/billing/constants/billing-subscription-state-lock-options.constant';
@@ -19,6 +20,7 @@ import { SubscriptionStatus } from 'src/engine/core-modules/billing/enums/billin
 import { BillingApplicationProductService } from 'src/engine/core-modules/billing/services/billing-application-product.service';
 import { BillingSeatService } from 'src/engine/core-modules/billing/services/billing-seat.service';
 import { BillingSubscriptionService } from 'src/engine/core-modules/billing/services/billing-subscription.service';
+import { StripeSubscriptionItemService } from 'src/engine/core-modules/billing/stripe/services/stripe-subscription-item.service';
 import { StripeSubscriptionScheduleService } from 'src/engine/core-modules/billing/stripe/services/stripe-subscription-schedule.service';
 import { StripeSubscriptionService } from 'src/engine/core-modules/billing/stripe/services/stripe-subscription.service';
 import { buildApplicationSchedulePhasesUpdate } from 'src/engine/core-modules/billing/utils/build-application-schedule-phases-update.util';
@@ -41,6 +43,7 @@ export class BillingApplicationSubscriptionService {
     private readonly billingApplicationProductService: BillingApplicationProductService,
     private readonly billingSeatService: BillingSeatService,
     private readonly stripeSubscriptionService: StripeSubscriptionService,
+    private readonly stripeSubscriptionItemService: StripeSubscriptionItemService,
     private readonly stripeSubscriptionScheduleService: StripeSubscriptionScheduleService,
     private readonly workspaceCacheService: WorkspaceCacheService,
     private readonly cacheLockService: CacheLockService,
@@ -72,14 +75,17 @@ export class BillingApplicationSubscriptionService {
       return;
     }
 
-    const { flatApplicationMaps } =
+    const { flatApplicationMaps, featureFlagsMap } =
       await this.workspaceCacheService.getOrRecompute(workspaceId, [
         'flatApplicationMaps',
+        'featureFlagsMap',
       ]);
 
-    const declaredPrices = collectDeclaredApplicationPrices({
-      flatApplicationMaps,
-    });
+    const declaredPrices =
+      featureFlagsMap[FeatureFlagKey.IS_APPLICATION_PRICE_BILLING_ENABLED] ===
+      true
+        ? collectDeclaredApplicationPrices({ flatApplicationMaps })
+        : [];
 
     const applicationBillingSubscriptionItems =
       billingSubscription.billingSubscriptionItems.filter(
@@ -129,6 +135,12 @@ export class BillingApplicationSubscriptionService {
       billingSubscription.stripeSubscriptionId,
     );
 
+    // The subscription only carries its first items inline: an item left out of the diff would stay billed.
+    const stripeSubscriptionItems =
+      await this.stripeSubscriptionItemService.listSubscriptionItems(
+        billingSubscription.stripeSubscriptionId,
+      );
+
     const nextPhasePriceIds = (nextPhase?.items ?? []).map(({ price }) =>
       normalizePriceRef(price),
     );
@@ -136,7 +148,7 @@ export class BillingApplicationSubscriptionService {
     const itemPrices = await this.billingPriceRepository.find({
       where: {
         stripePriceId: In([
-          ...stripeSubscription.items.data.map(({ price }) => price.id),
+          ...stripeSubscriptionItems.map(({ price }) => price.id),
           ...nextPhasePriceIds,
         ]),
       },
@@ -154,7 +166,7 @@ export class BillingApplicationSubscriptionService {
     );
 
     const subscriptionUpdate = buildApplicationSubscriptionUpdate({
-      currentItems: stripeSubscription.items.data
+      currentItems: stripeSubscriptionItems
         .filter(({ price }) => applicationPriceIds.has(price.id))
         .map(({ id, price, quantity }) => ({
           id,
@@ -207,10 +219,15 @@ export class BillingApplicationSubscriptionService {
       }
     }
 
+    const removedStripeSubscriptionItemIds = (subscriptionUpdate?.items ?? [])
+      .filter(({ deleted }) => deleted === true)
+      .map(({ id }) => id);
+
     const staleBillingSubscriptionItemIds = applicationBillingSubscriptionItems
       .filter(
         ({ stripeSubscriptionItemId }) =>
-          !updatedStripeSubscription.items.data.some(
+          removedStripeSubscriptionItemIds.includes(stripeSubscriptionItemId) ||
+          !stripeSubscriptionItems.some(
             ({ id }) => id === stripeSubscriptionItemId,
           ),
       )

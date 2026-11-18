@@ -1,9 +1,15 @@
+import { type ApplicationBillingPrice } from 'twenty-shared/application';
+
 import { ApplicationRegistrationSourceType } from 'src/engine/core-modules/application/application-registration/enums/application-registration-source-type.enum';
-import { type FlatApplicationCacheMaps } from 'src/engine/core-modules/application/types/flat-application-cache-maps.type';
-import { type FlatApplication } from 'src/engine/core-modules/application/types/flat-application.type';
 import { collectDeclaredApplicationPrices } from 'src/engine/core-modules/billing/utils/collect-declared-application-prices.util';
 
-const price = {
+type BillableApplication = NonNullable<
+  Parameters<
+    typeof collectDeclaredApplicationPrices
+  >[0]['flatApplicationMaps']['byId'][string]
+>;
+
+const price: ApplicationBillingPrice = {
   universalIdentifier: 'b7e41d08-2a93-4f5c-8d16-0c9e3b5a7f21',
   label: 'Per member',
   type: 'RECURRING',
@@ -12,21 +18,20 @@ const price = {
   per: 'WORKSPACE_MEMBER',
 };
 
-const collect = (application: Record<string, unknown>) =>
+const application: BillableApplication = {
+  universalIdentifier: 'application-universal-identifier',
+  name: 'LinkedIn',
+  version: '1.0.0',
+  sourceType: ApplicationRegistrationSourceType.NPM,
+  deletedAt: null,
+  billing: { prices: [price] },
+};
+
+const collect = (overrides: Partial<BillableApplication>) =>
   collectDeclaredApplicationPrices({
     flatApplicationMaps: {
-      byId: {
-        application: {
-          universalIdentifier: 'application-universal-identifier',
-          name: 'LinkedIn',
-          version: '1.0.0',
-          sourceType: ApplicationRegistrationSourceType.NPM,
-          billing: { prices: [price] },
-          ...application,
-        } as unknown as FlatApplication,
-      },
-      idByUniversalIdentifier: {},
-    } satisfies FlatApplicationCacheMaps,
+      byId: { application: { ...application, ...overrides } },
+    },
   });
 
 describe('collectDeclaredApplicationPrices', () => {
@@ -50,13 +55,15 @@ describe('collectDeclaredApplicationPrices', () => {
     expect(collect({ billing: { prices: [price, price] } })).toHaveLength(1);
   });
 
-  it.each([
+  it.each<[string, Partial<BillableApplication>]>([
     ['is deleted', { deletedAt: new Date() }],
     ['has not completed its install', { version: null }],
-    ['is synced from a local source', { sourceType: 'local' }],
+    [
+      'is synced from a local source',
+      { sourceType: ApplicationRegistrationSourceType.LOCAL },
+    ],
     ['declares no price', { billing: {} }],
-    ['declares prices that are not a list', { billing: { prices: price } }],
-  ])('collects nothing when the application %s', (_, application) => {
-    expect(collect(application)).toEqual([]);
+  ])('collects nothing when the application %s', (_, overrides) => {
+    expect(collect(overrides)).toEqual([]);
   });
 });

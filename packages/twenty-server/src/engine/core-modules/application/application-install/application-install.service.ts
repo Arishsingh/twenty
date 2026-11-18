@@ -5,6 +5,7 @@ import { promises as fs } from 'fs';
 import { isAbsolute, relative, resolve } from 'path';
 
 import {
+  type ApplicationBilling,
   type ApplicationCapability,
   Manifest,
 } from 'twenty-shared/application';
@@ -553,6 +554,7 @@ export class ApplicationInstallService {
         await this.markInstallCompleted({
           applicationId: application.id,
           version: newVersion,
+          billing: resolvedPackage.manifest.application.billing ?? {},
           workspaceId: params.workspaceId,
         });
       }
@@ -570,6 +572,7 @@ export class ApplicationInstallService {
         await this.markInstallCompleted({
           applicationId: application.id,
           version: newVersion,
+          billing: resolvedPackage.manifest.application.billing ?? {},
           workspaceId: params.workspaceId,
         });
       }
@@ -749,14 +752,17 @@ export class ApplicationInstallService {
   private async markInstallCompleted({
     applicationId,
     version,
+    billing,
     workspaceId,
   }: {
     applicationId: string;
     version: string;
+    billing: ApplicationBilling;
     workspaceId: string;
   }): Promise<void> {
     await this.applicationService.update(applicationId, {
       version,
+      billing,
       workspaceId,
     });
 
