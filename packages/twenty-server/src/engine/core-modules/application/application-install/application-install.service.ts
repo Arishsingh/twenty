@@ -759,6 +759,10 @@ export class ApplicationInstallService {
       version,
       workspaceId,
     });
+
+    await this.applicationService.enqueueApplicationSubscriptionItemsSync(
+      workspaceId,
+    );
   }
 
   private async runPostInstallHook(params: {

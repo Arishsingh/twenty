@@ -33,7 +33,15 @@ import { type FlatApplication } from 'src/engine/core-modules/application/types/
 import { canCallerReachApplication } from 'src/engine/core-modules/application/utils/can-caller-reach-application.util';
 import { buildApplicationIframeMediaPermissionGrantQuery } from 'src/engine/core-modules/application/utils/build-application-iframe-media-permission-grant-query.util';
 import { findActiveFlatApplicationById } from 'src/engine/core-modules/application/utils/find-active-flat-application-by-id.util';
+import { UPDATE_SUBSCRIPTION_QUANTITY_JOB_RETRY_OPTIONS } from 'src/engine/core-modules/billing/constants/update-subscription-quantity-job-retry-options.constant';
+import {
+  SyncApplicationSubscriptionItemsJob,
+  type SyncApplicationSubscriptionItemsJobData,
+} from 'src/engine/core-modules/billing/jobs/sync-application-subscription-items.job';
 import { FileStorageService } from 'src/engine/core-modules/file-storage/services/file-storage.service';
+import { InjectMessageQueue } from 'src/engine/core-modules/message-queue/decorators/message-queue.decorator';
+import { MessageQueue } from 'src/engine/core-modules/message-queue/message-queue.constants';
+import { MessageQueueService } from 'src/engine/core-modules/message-queue/services/message-queue.service';
 import { WorkspaceEntity } from 'src/engine/core-modules/workspace/workspace.entity';
 import { AgentEntity } from 'src/engine/metadata-modules/ai/ai-agent/entities/agent.entity';
 import { CommandMenuItemEntity } from 'src/engine/metadata-modules/command-menu-item/entities/command-menu-item.entity';
@@ -81,6 +89,8 @@ export class ApplicationService {
     private readonly applicationVariableRepository: WorkspaceScopedRepository<ApplicationVariableEntity>,
     private readonly workspaceEventBroadcaster: WorkspaceEventBroadcaster,
     private readonly applicationLookupService: ApplicationLookupService,
+    @InjectMessageQueue(MessageQueue.billingQueue)
+    private readonly billingQueueService: MessageQueueService,
   ) {}
 
   async findApplicationRoleId(
@@ -787,6 +797,26 @@ export class ApplicationService {
     }
   }
 
+  async enqueueApplicationSubscriptionItemsSync(
+    workspaceId: string,
+  ): Promise<void> {
+    try {
+      await this.billingQueueService.add<SyncApplicationSubscriptionItemsJobData>(
+        SyncApplicationSubscriptionItemsJob.name,
+        { workspaceId },
+        {
+          ...UPDATE_SUBSCRIPTION_QUANTITY_JOB_RETRY_OPTIONS,
+          workspaceId,
+          isWorkspaceJob: true,
+        },
+      );
+    } catch (error) {
+      this.logger.error(
+        `Failed to enqueue the application subscription items sync for workspace ${workspaceId}: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+  }
+
   async create(
     data: Partial<ApplicationEntity> & { workspaceId: string },
     queryRunner?: QueryRunner,
@@ -1002,5 +1032,7 @@ export class ApplicationService {
       type: 'deleted',
       application,
     });
+
+    await this.enqueueApplicationSubscriptionItemsSync(workspaceId);
   }
 }
