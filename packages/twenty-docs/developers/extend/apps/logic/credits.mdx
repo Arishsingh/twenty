@@ -46,7 +46,7 @@ All three land on the same credit meter and the same **Settings > Usage** breakd
 ## Recurring charges
 
 <Warning>
-  Deprecated in favor of [prices](#prices). The build warns about recurring charges, but they keep being raised: prices are not billed yet, so keep yours until they are.
+  Deprecated in favor of [prices](#prices). The build warns about recurring charges, but they keep being raised. Do not declare the same fee as both a recurring charge and a price: the workspace would pay it twice.
 </Warning>
 
 A recurring charge is a subscription fee: a flat monthly amount, an amount per workspace member, or both. You declare the amount and the platform charges it. Your app never calls `chargeCredits` for these.
@@ -86,10 +86,6 @@ How they are raised:
 
 ## Prices
 
-<Warning>
-  Declaration only for now. The build validates `billing.prices`, but the platform does not bill them yet.
-</Warning>
-
 A price is charged in real currency instead of credits. It is billed as a line of the workspace's own Twenty subscription, so the workspace keeps a single invoice. Prices are in US dollars only for now.
 
 ```ts src/application-config.ts
@@ -128,6 +124,12 @@ billing: {
 | `per` | Omit for a flat fee. `WORKSPACE_MEMBER` makes the amount a rate per workspace member |
 
 A price follows the billing interval of the workspace: a workspace on a monthly Twenty plan pays the monthly amount, a workspace on a yearly plan pays 12 times the monthly amount once a year.
+
+Billing starts when the install completes and stops at uninstall, prorated to the days left in the billing period. A price `per: 'WORKSPACE_MEMBER'` follows the member count of the workspace. A workspace on a trial is not charged before the trial ends.
+
+When a new version of your app changes `amountCents`, a workspace keeps the amount of the version it runs and moves to the new amount when it upgrades.
+
+Prices are not billed on a server without billing enabled, nor for an app synced from a local source with `twenty app dev`.
 
 The build rejects a missing, duplicated or invalid `universalIdentifier`, an empty `label` or `description`, an unknown `type`, `billingPeriod` or `per`, an `amountCents` that is not a positive integer or exceeds 8,333,333 (12 times that is the most Stripe accepts for one price), and a `currency` other than `USD`.
 
