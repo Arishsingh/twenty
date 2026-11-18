@@ -6,8 +6,7 @@ import { type ApplicationBillingPrice } from 'twenty-shared/application';
 
 import { DEFAULT_APPLICATION_PRICE_CURRENCY } from 'src/engine/core-modules/billing/constants/default-application-price-currency.constant';
 
-// The amount is part of the identity: a Stripe price is immutable, so a changed amount is a new product
-// and workspaces on the previous amount keep it until they install the new version.
+// A Stripe price is immutable, so the amount is part of the identity: a changed amount is a new product.
 export const buildApplicationStripeProductId = ({
   applicationUniversalIdentifier,
   price,

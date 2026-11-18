@@ -6,7 +6,7 @@ export const resolveSyncedApplicationBilling = ({
   manifestBilling,
   isInstallCompleted,
 }: {
-  currentBilling: ApplicationBilling | undefined;
+  currentBilling: Pick<ApplicationBilling, 'prices'> | undefined;
   manifestBilling: ApplicationBilling | undefined;
   isInstallCompleted: boolean;
 }): ApplicationBilling =>

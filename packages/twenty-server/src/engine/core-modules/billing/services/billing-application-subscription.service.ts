@@ -81,11 +81,11 @@ export class BillingApplicationSubscriptionService {
         'featureFlagsMap',
       ]);
 
-    const declaredPrices =
-      featureFlagsMap[FeatureFlagKey.IS_APPLICATION_PRICE_BILLING_ENABLED] ===
-      true
-        ? collectDeclaredApplicationPrices({ flatApplicationMaps })
-        : [];
+    const declaredPrices = featureFlagsMap[
+      FeatureFlagKey.IS_APPLICATION_PRICE_BILLING_ENABLED
+    ]
+      ? collectDeclaredApplicationPrices({ flatApplicationMaps })
+      : [];
 
     const applicationBillingSubscriptionItems =
       billingSubscription.billingSubscriptionItems.filter(
@@ -220,7 +220,7 @@ export class BillingApplicationSubscriptionService {
     }
 
     const removedStripeSubscriptionItemIds = (subscriptionUpdate?.items ?? [])
-      .filter(({ deleted }) => deleted === true)
+      .filter(({ deleted }) => deleted)
       .map(({ id }) => id);
 
     const staleBillingSubscriptionItemIds = applicationBillingSubscriptionItems
