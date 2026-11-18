@@ -9,7 +9,7 @@ import {
   isNonEmptyArray,
 } from 'twenty-shared/utils';
 import { FeatureFlagKey } from 'twenty-shared/types';
-import { In, Repository } from 'typeorm';
+import { In, IsNull, Repository } from 'typeorm';
 
 import { BILLING_SUBSCRIPTION_STATE_LOCK_OPTIONS } from 'src/engine/core-modules/billing/constants/billing-subscription-state-lock-options.constant';
 import { BillingPriceEntity } from 'src/engine/core-modules/billing/entities/billing-price.entity';
@@ -26,6 +26,7 @@ import { StripeSubscriptionService } from 'src/engine/core-modules/billing/strip
 import { buildApplicationSchedulePhasesUpdate } from 'src/engine/core-modules/billing/utils/build-application-schedule-phases-update.util';
 import { buildApplicationSubscriptionUpdate } from 'src/engine/core-modules/billing/utils/build-application-subscription-update.util';
 import { buildBillingSubscriptionUpdateLockKey } from 'src/engine/core-modules/billing/utils/build-billing-subscription-update-lock-key.util';
+import { computeApplicationPriceQuantity } from 'src/engine/core-modules/billing/utils/compute-application-price-quantity.util';
 import { collectDeclaredApplicationPrices } from 'src/engine/core-modules/billing/utils/collect-declared-application-prices.util';
 import { findProductPriceForIntervalOrThrow } from 'src/engine/core-modules/billing/utils/find-product-price-for-interval-or-throw.util';
 import { isSendInvoiceSubscription } from 'src/engine/core-modules/billing/utils/is-send-invoice-subscription.util';
@@ -33,6 +34,7 @@ import { normalizePriceRef } from 'src/engine/core-modules/billing/utils/normali
 import { toPhaseUpdateParams } from 'src/engine/core-modules/billing/utils/to-phase-update-params.util';
 import { CacheLockService } from 'src/engine/core-modules/cache-lock/cache-lock.service';
 import { TwentyConfigService } from 'src/engine/core-modules/twenty-config/twenty-config.service';
+import { ConnectedAccountEntity } from 'src/engine/metadata-modules/connected-account/entities/connected-account.entity';
 import { WorkspaceCacheService } from 'src/engine/workspace-cache/services/workspace-cache.service';
 
 @Injectable()
@@ -51,6 +53,8 @@ export class BillingApplicationSubscriptionService {
     private readonly billingPriceRepository: Repository<BillingPriceEntity>,
     @InjectRepository(BillingSubscriptionItemEntity)
     private readonly billingSubscriptionItemRepository: Repository<BillingSubscriptionItemEntity>,
+    @InjectRepository(ConnectedAccountEntity)
+    private readonly connectedAccountRepository: Repository<ConnectedAccountEntity>,
   ) {}
 
   async syncApplicationItems(workspaceId: string): Promise<void> {
@@ -107,17 +111,36 @@ export class BillingApplicationSubscriptionService {
       ? await this.billingSeatService.countWorkspaceMembers(workspaceId)
       : 0;
 
-    const applicationProducts = await Promise.all(
+    const quantifiedPrices = await Promise.all(
       declaredPrices.map(async (declaredPrice) => ({
-        billingProduct:
-          await this.billingApplicationProductService.getOrCreateProduct(
-            declaredPrice,
-          ),
-        quantity:
-          declaredPrice.price.per === 'WORKSPACE_MEMBER'
-            ? workspaceMemberCount
-            : 1,
+        declaredPrice,
+        quantity: computeApplicationPriceQuantity({
+          per: declaredPrice.price.per,
+          workspaceMemberCount,
+          connectedAccountCount:
+            declaredPrice.price.per === 'CONNECTED_ACCOUNT'
+              ? await this.connectedAccountRepository.count({
+                  where: {
+                    workspaceId,
+                    applicationId: declaredPrice.applicationId,
+                    archivedAt: IsNull(),
+                  },
+                })
+              : 0,
+        }),
       })),
+    );
+
+    const applicationProducts = await Promise.all(
+      quantifiedPrices
+        .filter(({ quantity }) => quantity > 0)
+        .map(async ({ declaredPrice, quantity }) => ({
+          billingProduct:
+            await this.billingApplicationProductService.getOrCreateProduct(
+              declaredPrice,
+            ),
+          quantity,
+        })),
     );
 
     const buildApplicationItems = (interval: SubscriptionInterval) =>

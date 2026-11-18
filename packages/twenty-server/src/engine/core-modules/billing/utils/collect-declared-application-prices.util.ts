@@ -10,6 +10,7 @@ import { ApplicationRegistrationSourceType } from 'src/engine/core-modules/appli
 import { type FlatApplication } from 'src/engine/core-modules/application/types/flat-application.type';
 
 export type DeclaredApplicationPrice = {
+  applicationId: string;
   applicationUniversalIdentifier: string;
   applicationName: string;
   price: ApplicationBillingPrice;
@@ -25,6 +26,7 @@ export const collectDeclaredApplicationPrices = ({
         string,
         Pick<
           FlatApplication,
+          | 'id'
           | 'universalIdentifier'
           | 'name'
           | 'version'
@@ -58,6 +60,7 @@ export const collectDeclaredApplicationPrices = ({
       );
 
       return [...pricesByUniversalIdentifier.values()].map((price) => ({
+        applicationId: application.id,
         applicationUniversalIdentifier: application.universalIdentifier,
         applicationName: application.name,
         price,

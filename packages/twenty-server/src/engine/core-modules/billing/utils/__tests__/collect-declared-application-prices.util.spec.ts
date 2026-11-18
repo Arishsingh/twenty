@@ -19,6 +19,7 @@ const price: ApplicationBillingPrice = {
 };
 
 const application: BillableApplication = {
+  id: 'application-id',
   universalIdentifier: 'application-universal-identifier',
   name: 'LinkedIn',
   version: '1.0.0',
@@ -38,6 +39,7 @@ describe('collectDeclaredApplicationPrices', () => {
   it('collects the prices of an installed application', () => {
     expect(collect({})).toEqual([
       {
+        applicationId: 'application-id',
         applicationUniversalIdentifier: 'application-universal-identifier',
         applicationName: 'LinkedIn',
         price,

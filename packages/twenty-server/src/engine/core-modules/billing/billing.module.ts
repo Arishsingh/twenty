@@ -21,6 +21,7 @@ import { BillingProductEntity } from 'src/engine/core-modules/billing/entities/b
 import { BillingSubscriptionItemEntity } from 'src/engine/core-modules/billing/entities/billing-subscription-item.entity';
 import { BillingSubscriptionEntity } from 'src/engine/core-modules/billing/entities/billing-subscription.entity';
 import { BillingRestApiExceptionFilter } from 'src/engine/core-modules/billing/filters/billing-api-exception.filter';
+import { BillingApplicationConnectedAccountListener } from 'src/engine/core-modules/billing/listeners/billing-application-connected-account.listener';
 import { BillingWorkspaceMemberListener } from 'src/engine/core-modules/billing/listeners/billing-workspace-member.listener';
 import { BillingApplicationProductService } from 'src/engine/core-modules/billing/services/billing-application-product.service';
 import { BillingApplicationSubscriptionService } from 'src/engine/core-modules/billing/services/billing-application-subscription.service';
@@ -50,6 +51,7 @@ import { EnterpriseModule } from 'src/engine/core-modules/enterprise/enterprise.
 import { MetricsModule } from 'src/engine/core-modules/metrics/metrics.module';
 import { UserWorkspaceEntity } from 'src/engine/core-modules/user-workspace/user-workspace.entity';
 import { WorkspaceEntity } from 'src/engine/core-modules/workspace/workspace.entity';
+import { ConnectedAccountEntity } from 'src/engine/metadata-modules/connected-account/entities/connected-account.entity';
 import { PermissionsModule } from 'src/engine/permissions/permissions.module';
 import { provideWorkspaceScopedRepository } from 'src/engine/twenty-orm/workspace-scoped-repository/provide-workspace-scoped-repository';
 import { UsageAnalyticsModule } from 'src/engine/core-modules/usage/usage-analytics.module';
@@ -75,6 +77,7 @@ import { WorkspaceCacheModule } from 'src/engine/workspace-cache/workspace-cache
       BillingArrangementEntity,
       WorkspaceEntity,
       UserWorkspaceEntity,
+      ConnectedAccountEntity,
     ]),
     MetricsModule,
     EnterpriseModule,
@@ -91,6 +94,7 @@ import { WorkspaceCacheModule } from 'src/engine/workspace-cache/workspace-cache
     BillingSubscriptionItemResolver,
     BillingPlanService,
     BillingWorkspaceMemberListener,
+    BillingApplicationConnectedAccountListener,
     BillingService,
     BillingPartnerCodeService,
     BillingRestApiExceptionFilter,
