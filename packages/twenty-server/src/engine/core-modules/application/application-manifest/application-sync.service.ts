@@ -15,7 +15,6 @@ import { type ApplicationLifecycleProgressReporter } from 'src/engine/core-modul
 import { createApplicationLifecycleProgressReporter } from 'src/engine/core-modules/application/application-install/utils/create-application-lifecycle-progress-reporter.util';
 import { ApplicationGrantRoleService } from 'src/engine/core-modules/application/application-grant-role/services/application-grant-role.service';
 import { ApplicationRegistrationSourceType } from 'src/engine/core-modules/application/application-registration/enums/application-registration-source-type.enum';
-import { resolveSyncedApplicationBilling } from 'src/engine/core-modules/application/utils/resolve-synced-application-billing.util';
 import { resolveSyncedApplicationCapabilities } from 'src/engine/core-modules/application/utils/resolve-synced-application-capabilities.util';
 import { resolveSyncedApplicationIframeMediaPermissions } from 'src/engine/core-modules/application/utils/resolve-synced-application-iframe-media-permissions.util';
 import { toApplicationCapabilities } from 'src/engine/core-modules/application/utils/to-application-capabilities.util';
@@ -203,6 +202,7 @@ export class ApplicationSyncService {
       yarnLockFileId: null,
       availablePackages: {},
       billing: manifest.application.billing ?? {},
+      acceptedBillingPrices: null,
       grantedCapabilities: toApplicationCapabilities(
         manifest.application.requestedCapabilities,
       ),
@@ -315,11 +315,7 @@ export class ApplicationSyncService {
         ...(persistVersion ? { version: packageJson.version } : {}),
         packageJsonChecksum: storedFilesChecksums.packageJsonChecksum,
         yarnLockChecksum: storedFilesChecksums.yarnLockChecksum,
-        billing: resolveSyncedApplicationBilling({
-          currentBilling: application.billing,
-          manifestBilling: manifest.application.billing,
-          isInstallCompleted: persistVersion,
-        }),
+        billing: manifest.application.billing ?? {},
         grantedCapabilities: resolveSyncedApplicationCapabilities({
           sourceType: application.sourceType,
           grantedCapabilities: application.grantedCapabilities,

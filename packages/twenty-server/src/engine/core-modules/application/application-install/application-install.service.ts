@@ -5,7 +5,7 @@ import { promises as fs } from 'fs';
 import { isAbsolute, relative, resolve } from 'path';
 
 import {
-  type ApplicationBilling,
+  type ApplicationBillingPrice,
   type ApplicationCapability,
   Manifest,
 } from 'twenty-shared/application';
@@ -17,6 +17,7 @@ import {
 import { Repository } from 'typeorm';
 
 import { buildApplicationFileList } from 'src/engine/core-modules/application/application-install/utils/build-application-file-list.util';
+import { resolveAcceptedBillingPricesOnInstallCompleted } from 'src/engine/core-modules/application/utils/resolve-accepted-billing-prices-on-install-completed.util';
 import { toApplicationCapabilities } from 'src/engine/core-modules/application/utils/to-application-capabilities.util';
 import { toRequestedIframeMediaPermissionsOrThrow } from 'src/engine/core-modules/application/utils/to-requested-iframe-media-permissions-or-throw.util';
 import { ApplicationManifestApplyService } from 'src/engine/core-modules/application/application-manifest/application-manifest-apply.service';
@@ -554,7 +555,12 @@ export class ApplicationInstallService {
         await this.markInstallCompleted({
           applicationId: application.id,
           version: newVersion,
-          billing: resolvedPackage.manifest.application.billing ?? {},
+          acceptedBillingPrices: resolveAcceptedBillingPricesOnInstallCompleted(
+            {
+              previousVersion,
+              manifestBilling: resolvedPackage.manifest.application.billing,
+            },
+          ),
           workspaceId: params.workspaceId,
         });
       }
@@ -572,7 +578,12 @@ export class ApplicationInstallService {
         await this.markInstallCompleted({
           applicationId: application.id,
           version: newVersion,
-          billing: resolvedPackage.manifest.application.billing ?? {},
+          acceptedBillingPrices: resolveAcceptedBillingPricesOnInstallCompleted(
+            {
+              previousVersion,
+              manifestBilling: resolvedPackage.manifest.application.billing,
+            },
+          ),
           workspaceId: params.workspaceId,
         });
       }
@@ -752,17 +763,17 @@ export class ApplicationInstallService {
   private async markInstallCompleted({
     applicationId,
     version,
-    billing,
+    acceptedBillingPrices,
     workspaceId,
   }: {
     applicationId: string;
     version: string;
-    billing: ApplicationBilling;
+    acceptedBillingPrices: ApplicationBillingPrice[] | undefined;
     workspaceId: string;
   }): Promise<void> {
     await this.applicationService.update(applicationId, {
       version,
-      billing,
+      ...(isDefined(acceptedBillingPrices) ? { acceptedBillingPrices } : {}),
       workspaceId,
     });
 
