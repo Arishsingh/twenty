@@ -16,7 +16,6 @@ export type DeclaredApplicationPrice = {
   price: ApplicationBillingPrice;
 };
 
-// `billing` is jsonb persisted without a shape check, so prices are validated here, before they reach Stripe.
 export const collectDeclaredApplicationPrices = ({
   flatApplicationMaps,
 }: {
@@ -32,7 +31,7 @@ export const collectDeclaredApplicationPrices = ({
           | 'version'
           | 'sourceType'
           | 'deletedAt'
-          | 'billing'
+          | 'acceptedBillingPrices'
         >
       >
     >;
@@ -47,7 +46,7 @@ export const collectDeclaredApplicationPrices = ({
         application.sourceType !== ApplicationRegistrationSourceType.LOCAL,
     )
     .flatMap((application) => {
-      const prices: unknown = application.billing?.prices;
+      const prices: unknown = application.acceptedBillingPrices;
 
       if (!Array.isArray(prices)) {
         return [];

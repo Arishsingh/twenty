@@ -162,7 +162,6 @@ export class BillingApplicationSubscriptionService {
       billingSubscription.stripeSubscriptionId,
     );
 
-    // The subscription only carries its first items inline: an item left out of the diff would stay billed.
     const stripeSubscriptionItems =
       await this.stripeSubscriptionItemService.listSubscriptionItems(
         billingSubscription.stripeSubscriptionId,

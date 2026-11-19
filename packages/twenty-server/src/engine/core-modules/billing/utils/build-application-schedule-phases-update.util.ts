@@ -8,7 +8,6 @@ import { isSamePhaseSignature } from 'src/engine/core-modules/billing/utils/is-s
 
 type Phase = Stripe.SubscriptionScheduleUpdateParams.Phase;
 
-// An item added on the subscription alone is dropped when the schedule moves to its next phase.
 export const buildApplicationSchedulePhasesUpdate = ({
   currentPhase,
   nextPhase,

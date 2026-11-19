@@ -25,7 +25,7 @@ const application: BillableApplication = {
   version: '1.0.0',
   sourceType: ApplicationRegistrationSourceType.NPM,
   deletedAt: null,
-  billing: { prices: [price] },
+  acceptedBillingPrices: [price],
 };
 
 const collect = (overrides: Partial<BillableApplication>) =>
@@ -36,7 +36,7 @@ const collect = (overrides: Partial<BillableApplication>) =>
   });
 
 describe('collectDeclaredApplicationPrices', () => {
-  it('collects the prices of an installed application', () => {
+  it('collects the prices an installed application was accepted with', () => {
     expect(collect({})).toEqual([
       {
         applicationId: 'application-id',
@@ -49,12 +49,14 @@ describe('collectDeclaredApplicationPrices', () => {
 
   it('leaves out a malformed price', () => {
     expect(
-      collect({ billing: { prices: [{ ...price, amountCents: -1 }, price] } }),
+      collect({
+        acceptedBillingPrices: [{ ...price, amountCents: -1 }, price],
+      }),
     ).toHaveLength(1);
   });
 
   it('keeps one price per universal identifier', () => {
-    expect(collect({ billing: { prices: [price, price] } })).toHaveLength(1);
+    expect(collect({ acceptedBillingPrices: [price, price] })).toHaveLength(1);
   });
 
   it.each<[string, Partial<BillableApplication>]>([
@@ -64,7 +66,11 @@ describe('collectDeclaredApplicationPrices', () => {
       'is synced from a local source',
       { sourceType: ApplicationRegistrationSourceType.LOCAL },
     ],
-    ['declares no price', { billing: {} }],
+    ['was accepted for free', { acceptedBillingPrices: [] }],
+    [
+      'was installed before prices were accepted',
+      { acceptedBillingPrices: null },
+    ],
   ])('collects nothing when the application %s', (_, overrides) => {
     expect(collect(overrides)).toEqual([]);
   });
