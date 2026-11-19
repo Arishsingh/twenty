@@ -551,18 +551,19 @@ export class ApplicationInstallService {
         resolvedPackage.manifest.application.postInstallLogicFunction
           ?.shouldRunSynchronously === true;
 
+      const installCompletion = {
+        applicationId: application.id,
+        universalIdentifier: application.universalIdentifier,
+        version: newVersion,
+        acceptedBillingPrices: resolveAcceptedBillingPricesOnInstallCompleted({
+          previousVersion,
+          manifestBilling: resolvedPackage.manifest.application.billing,
+        }),
+        workspaceId: params.workspaceId,
+      };
+
       if (!isPostInstallHookSynchronous) {
-        await this.markInstallCompleted({
-          applicationId: application.id,
-          version: newVersion,
-          acceptedBillingPrices: resolveAcceptedBillingPricesOnInstallCompleted(
-            {
-              previousVersion,
-              manifestBilling: resolvedPackage.manifest.application.billing,
-            },
-          ),
-          workspaceId: params.workspaceId,
-        });
+        await this.markInstallCompleted(installCompletion);
       }
 
       await this.runPostInstallHook({
@@ -575,17 +576,7 @@ export class ApplicationInstallService {
       });
 
       if (isPostInstallHookSynchronous) {
-        await this.markInstallCompleted({
-          applicationId: application.id,
-          version: newVersion,
-          acceptedBillingPrices: resolveAcceptedBillingPricesOnInstallCompleted(
-            {
-              previousVersion,
-              manifestBilling: resolvedPackage.manifest.application.billing,
-            },
-          ),
-          workspaceId: params.workspaceId,
-        });
+        await this.markInstallCompleted(installCompletion);
       }
 
       await progressReporter.reportStepCompleted('POST_INSTALL_HOOK');
@@ -762,11 +753,13 @@ export class ApplicationInstallService {
 
   private async markInstallCompleted({
     applicationId,
+    universalIdentifier,
     version,
     acceptedBillingPrices,
     workspaceId,
   }: {
     applicationId: string;
+    universalIdentifier: string;
     version: string;
     acceptedBillingPrices: ApplicationBillingPrice[] | undefined;
     workspaceId: string;
@@ -777,9 +770,10 @@ export class ApplicationInstallService {
       workspaceId,
     });
 
-    await this.applicationService.enqueueApplicationSubscriptionItemsSync(
+    this.applicationService.emitInstallationChanged({
+      universalIdentifier,
       workspaceId,
-    );
+    });
   }
 
   private async runPostInstallHook(params: {

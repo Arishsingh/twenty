@@ -28,9 +28,10 @@ import { SubscriptionStatus } from 'src/engine/core-modules/billing/enums/billin
 import { UPDATE_SUBSCRIPTION_QUANTITY_JOB_RETRY_OPTIONS } from 'src/engine/core-modules/billing/constants/update-subscription-quantity-job-retry-options.constant';
 import { BillingWebhookEvent } from 'src/engine/core-modules/billing/enums/billing-webhook-events.enum';
 import {
-  SyncApplicationSubscriptionItemsJob,
-  type SyncApplicationSubscriptionItemsJobData,
-} from 'src/engine/core-modules/billing/jobs/sync-application-subscription-items.job';
+  UpdateSubscriptionQuantityJob,
+  type UpdateSubscriptionQuantityJobData,
+} from 'src/engine/core-modules/billing/jobs/update-subscription-quantity.job';
+import { BillingApplicationProductService } from 'src/engine/core-modules/billing/services/billing-application-product.service';
 import { StripeCustomerService } from 'src/engine/core-modules/billing/stripe/services/stripe-customer.service';
 import { StripeSubscriptionScheduleService } from 'src/engine/core-modules/billing/stripe/services/stripe-subscription-schedule.service';
 import { StripeSubscriptionService } from 'src/engine/core-modules/billing/stripe/services/stripe-subscription.service';
@@ -63,6 +64,7 @@ export class BillingWebhookSubscriptionService {
     private readonly messageQueueService: MessageQueueService,
     @InjectMessageQueue(MessageQueue.billingQueue)
     private readonly billingMessageQueueService: MessageQueueService,
+    private readonly billingApplicationProductService: BillingApplicationProductService,
     // Stripe webhook upserts conflict-resolve globally on stripeSubscriptionId.
     // eslint-disable-next-line twenty/prefer-workspace-scoped-repository
     @InjectRepository(BillingSubscriptionEntity)
@@ -172,6 +174,7 @@ export class BillingWebhookSubscriptionService {
         },
         select: {
           id: true,
+          status: true,
           currentPeriodStart: true,
           currentPeriodEnd: true,
           currentPeriodMaxSeats: true,
@@ -290,10 +293,16 @@ export class BillingWebhookSubscriptionService {
       );
     }
 
-    if (type !== BillingWebhookEvent.CUSTOMER_SUBSCRIPTION_DELETED) {
-      await this.billingMessageQueueService.add<SyncApplicationSubscriptionItemsJobData>(
-        SyncApplicationSubscriptionItemsJob.name,
-        { workspaceId, canSkipFromMirroredState: true },
+    if (
+      type !== BillingWebhookEvent.CUSTOMER_SUBSCRIPTION_DELETED &&
+      storedSubscription?.status !== incomingSubscription.status &&
+      (await this.billingApplicationProductService.isApplicationPriceBillingEnabled(
+        workspaceId,
+      ))
+    ) {
+      await this.billingMessageQueueService.add<UpdateSubscriptionQuantityJobData>(
+        UpdateSubscriptionQuantityJob.name,
+        { workspaceId },
         {
           ...UPDATE_SUBSCRIPTION_QUANTITY_JOB_RETRY_OPTIONS,
           workspaceId,

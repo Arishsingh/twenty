@@ -3,11 +3,9 @@ import { type ApplicationBillingPrice } from 'twenty-shared/application';
 import { ApplicationRegistrationSourceType } from 'src/engine/core-modules/application/application-registration/enums/application-registration-source-type.enum';
 import { collectDeclaredApplicationPrices } from 'src/engine/core-modules/billing/utils/collect-declared-application-prices.util';
 
-type BillableApplication = NonNullable<
-  Parameters<
-    typeof collectDeclaredApplicationPrices
-  >[0]['flatApplicationMaps']['byId'][string]
->;
+type BillableApplication = Parameters<
+  typeof collectDeclaredApplicationPrices
+>[0]['applications'][number];
 
 const price: ApplicationBillingPrice = {
   universalIdentifier: 'b7e41d08-2a93-4f5c-8d16-0c9e3b5a7f21',
@@ -29,9 +27,7 @@ const application: BillableApplication = {
 
 const collect = (overrides: Partial<BillableApplication>) =>
   collectDeclaredApplicationPrices({
-    flatApplicationMaps: {
-      byId: { application: { ...application, ...overrides } },
-    },
+    applications: [{ ...application, ...overrides }],
   });
 
 describe('collectDeclaredApplicationPrices', () => {

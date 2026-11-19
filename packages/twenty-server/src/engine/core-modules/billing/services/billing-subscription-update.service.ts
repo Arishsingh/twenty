@@ -8,7 +8,6 @@ import {
   assertUnreachable,
   findOrThrow,
   isDefined,
-  isNonEmptyArray,
 } from 'twenty-shared/utils';
 import { In, type Repository } from 'typeorm';
 
@@ -19,6 +18,7 @@ import {
   BillingExceptionCode,
 } from 'src/engine/core-modules/billing/billing.exception';
 import { BILLING_SUBSCRIPTION_STATE_LOCK_OPTIONS } from 'src/engine/core-modules/billing/constants/billing-subscription-state-lock-options.constant';
+import { INCOMPLETE_SUBSCRIPTION_STATUSES } from 'src/engine/core-modules/billing/constants/incomplete-subscription-statuses.constant';
 import { billingValidator } from 'src/engine/core-modules/billing/billing.validate';
 import { BillingPriceEntity } from 'src/engine/core-modules/billing/entities/billing-price.entity';
 import { BillingSubscriptionEntity } from 'src/engine/core-modules/billing/entities/billing-subscription.entity';
@@ -26,6 +26,7 @@ import { BillingPlanKey } from 'src/engine/core-modules/billing/enums/billing-pl
 import { BillingProductKey } from 'src/engine/core-modules/billing/enums/billing-product-key.enum';
 import { SubscriptionInterval } from 'src/engine/core-modules/billing/enums/billing-subscription-interval.enum';
 import { SubscriptionStatus } from 'src/engine/core-modules/billing/enums/billing-subscription-status.enum';
+import { BillingApplicationProductService } from 'src/engine/core-modules/billing/services/billing-application-product.service';
 import { BillingPriceService } from 'src/engine/core-modules/billing/services/billing-price.service';
 import { BillingProductService } from 'src/engine/core-modules/billing/services/billing-product.service';
 import { BillingSeatService } from 'src/engine/core-modules/billing/services/billing-seat.service';
@@ -37,7 +38,7 @@ import {
   type SubscriptionUpdate,
   SubscriptionUpdateType,
 } from 'src/engine/core-modules/billing/types/billing-subscription-update.type';
-import { computeApplicationPricesForIntervalOrThrow } from 'src/engine/core-modules/billing/utils/compute-application-prices-for-interval-or-throw.util';
+import { buildApplicationItemsForInterval } from 'src/engine/core-modules/billing/utils/build-application-items-for-interval.util';
 import { computeImmediateSubscriptionUpdate } from 'src/engine/core-modules/billing/utils/compute-immediate-subscription-update.util';
 import { computeSubscriptionUpdateOptions } from 'src/engine/core-modules/billing/utils/compute-subscription-update-options.util';
 import { findSellableBaseProductPriceOrThrow } from 'src/engine/core-modules/billing/utils/find-sellable-base-product-price-or-throw.util';
@@ -45,6 +46,7 @@ import { findProductPriceForIntervalOrThrow } from 'src/engine/core-modules/bill
 import { isResourceCreditPriceForSubscription } from 'src/engine/core-modules/billing/utils/is-resource-credit-price-for-subscription.util';
 import { isSellableCatalogPrice } from 'src/engine/core-modules/billing/utils/is-sellable-catalog-price.util';
 import { isSendInvoiceSubscription } from 'src/engine/core-modules/billing/utils/is-send-invoice-subscription.util';
+import { isSubscriptionQuantityIncrease } from 'src/engine/core-modules/billing/utils/is-subscription-quantity-increase.util';
 import { getBaseProductSubscriptionItemOrThrow } from 'src/engine/core-modules/billing/utils/get-base-product-subscription-item-or-throw.util';
 import { getBillingPlanConfig } from 'src/engine/core-modules/billing/utils/get-billing-plan-config.util';
 import { getPlanSwitchOrThrow } from 'src/engine/core-modules/billing/utils/get-plan-switch-or-throw.util';
@@ -55,6 +57,7 @@ import { buildSubscriptionItemsUpdate } from 'src/engine/core-modules/billing/ut
 import { isSamePhaseSignature } from 'src/engine/core-modules/billing/utils/is-same-phase-signature.util';
 import { toPhaseUpdateParams } from 'src/engine/core-modules/billing/utils/to-phase-update-params.util';
 import { type SubscriptionStripePrices } from 'src/engine/core-modules/billing/types/subscription-stripe-prices.type';
+import { type TargetApplicationProduct } from 'src/engine/core-modules/billing/types/target-application-product.type';
 import { TwentyConfigService } from 'src/engine/core-modules/twenty-config/twenty-config.service';
 import { type WorkspaceEntity } from 'src/engine/core-modules/workspace/workspace.entity';
 import { buildBillingSubscriptionStateLockKey } from 'src/engine/core-modules/billing/utils/build-billing-subscription-state-lock-key.util';
@@ -78,6 +81,7 @@ export class BillingSubscriptionUpdateService {
     private readonly stripeSubscriptionScheduleService: StripeSubscriptionScheduleService,
     private readonly billingSubscriptionService: BillingSubscriptionService,
     private readonly billingSeatService: BillingSeatService,
+    private readonly billingApplicationProductService: BillingApplicationProductService,
     private readonly twentyConfigService: TwentyConfigService,
     private readonly cacheLockService: CacheLockService,
   ) {}
@@ -240,7 +244,10 @@ export class BillingSubscriptionUpdateService {
         workspaceId,
       });
 
-    if (!isDefined(billingSubscription)) {
+    if (
+      !isDefined(billingSubscription) ||
+      INCOMPLETE_SUBSCRIPTION_STATUSES.includes(billingSubscription.status)
+    ) {
       return;
     }
 
@@ -258,7 +265,7 @@ export class BillingSubscriptionUpdateService {
           workspaceId,
           subscriptionId: billingSubscription.id,
           subscriptionUpdate: {
-            type: SubscriptionUpdateType.SEATS,
+            type: SubscriptionUpdateType.QUANTITIES,
             newSeats: billedSeats,
           },
           renewalDate,
@@ -333,16 +340,22 @@ export class BillingSubscriptionUpdateService {
     );
 
     const seats =
-      subscriptionUpdate.type === SubscriptionUpdateType.SEATS
+      subscriptionUpdate.type === SubscriptionUpdateType.QUANTITIES
         ? subscriptionUpdate.newSeats
         : ((await this.billingSeatService.computeCurrentBilledSeats(
             workspaceId,
           )) ?? currentPrices.seats);
 
-    const toUpdateCurrentPrices = await this.computeSubscriptionPricesUpdate(
+    const targetApplicationProducts =
+      await this.billingApplicationProductService.findTargetApplicationProducts(
+        workspaceId,
+      );
+
+    const toUpdateCurrentPrices = await this.computeTargetSubscriptionPrices({
       subscriptionUpdate,
-      { ...currentPrices, seats },
-    );
+      prices: { ...currentPrices, seats },
+      targetApplicationProducts,
+    });
 
     const shouldUpdateAtPeriodEnd =
       await this.shouldUpdateAtSubscriptionPeriodEnd(
@@ -373,10 +386,11 @@ export class BillingSubscriptionUpdateService {
           nextPhase.items,
         );
 
-        const toUpdateNextPrices = await this.computeSubscriptionPricesUpdate(
+        const toUpdateNextPrices = await this.computeTargetSubscriptionPrices({
           subscriptionUpdate,
-          nextPhasePrices,
-        );
+          prices: nextPhasePrices,
+          targetApplicationProducts,
+        });
 
         await this.runSubscriptionScheduleUpdate({
           stripeScheduleId: schedule.id,
@@ -417,10 +431,11 @@ export class BillingSubscriptionUpdateService {
         const nextPhasePrices = await this.getSubscriptionPricesFromItems(
           nextPhase.items,
         );
-        const toUpdateNextPrices = await this.computeSubscriptionPricesUpdate(
+        const toUpdateNextPrices = await this.computeTargetSubscriptionPrices({
           subscriptionUpdate,
-          nextPhasePrices,
-        );
+          prices: nextPhasePrices,
+          targetApplicationProducts,
+        });
 
         await this.runSubscriptionScheduleUpdate({
           stripeScheduleId: schedule.id,
@@ -573,13 +588,20 @@ export class BillingSubscriptionUpdateService {
       baseProductPriceId: basePlanPrice.stripePriceId,
       seats: basePlanPhaseItem.quantity,
       resourceCreditPriceId: resourceCreditPrice.stripePriceId,
-      applicationPriceIds: phaseItemPrices
+      applicationItems: phaseItemPrices
         .filter(
           (price) =>
             price.billingProduct?.metadata?.productKey ===
             BillingProductKey.APPLICATION,
         )
-        .map((price) => price.stripePriceId),
+        .map((price) => ({
+          stripeProductId: price.stripeProductId,
+          stripePriceId: price.stripePriceId,
+          quantity:
+            items.find(
+              (item) => normalizePriceRef(item.price) === price.stripePriceId,
+            )?.quantity ?? 1,
+        })),
     };
   }
 
@@ -609,7 +631,10 @@ export class BillingSubscriptionUpdateService {
     const { proration, anchor, metadata } = computeSubscriptionUpdateOptions(
       subscriptionUpdate,
       {
-        currentSeats: currentPrices.seats,
+        isQuantityIncrease: isSubscriptionQuantityIncrease({
+          currentPrices,
+          toUpdatePrices: toUpdateCurrentPrices,
+        }),
         isTrialing: subscription.status === SubscriptionStatus.Trialing,
         isSendInvoice: isSendInvoiceSubscription(subscription),
       },
@@ -621,6 +646,7 @@ export class BillingSubscriptionUpdateService {
         items: buildSubscriptionItemsUpdate({
           billingSubscriptionItems: subscription.billingSubscriptionItems,
           stripeSubscriptionItems,
+          currentPrices,
           toUpdatePrices: toUpdateCurrentPrices,
         }),
         proration_behavior: proration,
@@ -742,7 +768,7 @@ export class BillingSubscriptionUpdateService {
 
         return isDowngrade;
       }
-      case SubscriptionUpdateType.SEATS:
+      case SubscriptionUpdateType.QUANTITIES:
         return false;
       case SubscriptionUpdateType.INTERVAL: {
         const currentInterval = subscription.interval;
@@ -761,6 +787,33 @@ export class BillingSubscriptionUpdateService {
     }
   }
 
+  private async computeTargetSubscriptionPrices({
+    subscriptionUpdate,
+    prices,
+    targetApplicationProducts,
+  }: {
+    subscriptionUpdate: SubscriptionUpdate;
+    prices: SubscriptionStripePrices;
+    targetApplicationProducts: TargetApplicationProduct[];
+  }): Promise<SubscriptionStripePrices> {
+    const toUpdatePrices = await this.computeSubscriptionPricesUpdate(
+      subscriptionUpdate,
+      prices,
+    );
+
+    const { interval } = await this.billingPriceRepository.findOneOrFail({
+      where: { stripePriceId: toUpdatePrices.baseProductPriceId },
+    });
+
+    return {
+      ...toUpdatePrices,
+      applicationItems: buildApplicationItemsForInterval({
+        targetApplicationProducts,
+        interval,
+      }),
+    };
+  }
+
   async computeSubscriptionPricesUpdate(
     update: SubscriptionUpdate,
     currentPrices: SubscriptionStripePrices,
@@ -771,7 +824,7 @@ export class BillingSubscriptionUpdateService {
           update.newPlan,
           currentPrices,
         );
-      case SubscriptionUpdateType.SEATS:
+      case SubscriptionUpdateType.QUANTITIES:
         return this.computeSubscriptionPricesUpdateBySeats(
           update.newSeats,
           currentPrices,
@@ -952,28 +1005,10 @@ export class BillingSubscriptionUpdateService {
         hasSamePlanKey: true,
       });
 
-    const applicationPrices = isNonEmptyArray(currentPrices.applicationPriceIds)
-      ? await this.billingPriceRepository.find({
-          where: { stripePriceId: In(currentPrices.applicationPriceIds) },
-          relations: ['billingProduct', 'billingProduct.billingPrices'],
-        })
-      : [];
-
-    const targetApplicationPriceIdByCurrentPriceId =
-      computeApplicationPricesForIntervalOrThrow({
-        applicationPriceIds: currentPrices.applicationPriceIds,
-        applicationPrices,
-        interval: newInterval,
-      });
-
     return {
       ...currentPrices,
       baseProductPriceId: targetBaseProductPrice.stripePriceId,
       resourceCreditPriceId: targetResourceCreditPrice.stripePriceId,
-      applicationPriceIds: [
-        ...targetApplicationPriceIdByCurrentPriceId.values(),
-      ],
-      targetApplicationPriceIdByCurrentPriceId,
     };
   }
 }

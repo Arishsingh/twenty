@@ -6,7 +6,6 @@ import { TypeORMModule } from 'src/database/typeorm/typeorm.module';
 import { WorkspaceCacheModule } from 'src/engine/workspace-cache/workspace-cache.module';
 import { AuthModule } from 'src/engine/core-modules/auth/auth.module';
 import { BillingModule } from 'src/engine/core-modules/billing/billing.module';
-import { SyncApplicationSubscriptionItemsJob } from 'src/engine/core-modules/billing/jobs/sync-application-subscription-items.job';
 import { UpdateSubscriptionQuantityJob } from 'src/engine/core-modules/billing/jobs/update-subscription-quantity.job';
 import { ApplicationRecurringChargeModule } from 'src/engine/core-modules/billing/app-billing/application-recurring-charge.module';
 import { ApplicationRecurringChargeCronJob } from 'src/engine/core-modules/billing/app-billing/crons/jobs/application-recurring-charge.cron.job';
@@ -138,7 +137,6 @@ import { WorkflowModule } from 'src/modules/workflow/workflow.module';
     RefreshCampaignStatsJob,
     ReconcileWorkspaceCampaignStatsJob,
     UpdateSubscriptionQuantityJob,
-    SyncApplicationSubscriptionItemsJob,
     HandleWorkspaceMemberDeletedJob,
     WorkspaceDeletionApplicationUninstallJob,
     CleanWorkspaceDeletionWarningUserVarsJob,
