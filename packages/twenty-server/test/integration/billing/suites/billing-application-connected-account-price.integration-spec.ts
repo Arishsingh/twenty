@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 import {
   getSeededBillingWorkspaceId,
+  setupResourceCreditSubscription,
   TEST_STRIPE_SUBSCRIPTION_ID,
 } from 'test/integration/billing/utils/billing-credit-fixtures.util';
 import { buildBaseManifest } from 'test/integration/metadata/suites/application/utils/build-base-manifest.util';
@@ -203,16 +204,13 @@ describe('Application price per connected account (integration)', () => {
        WHERE "universalIdentifier" = $1 AND "workspaceId" = $2`,
       [applicationUniversalIdentifier, workspaceId, JSON.stringify([PRICE])],
     );
-    await query(
-      `UPDATE core."billingSubscription" SET interval = 'month', status = 'active'
-       WHERE "stripeSubscriptionId" = $1`,
-      [TEST_STRIPE_SUBSCRIPTION_ID],
-    );
-
-    const [{ id: billingSubscriptionId }] = await query<{ id: string }>(
-      `SELECT id FROM core."billingSubscription" WHERE "stripeSubscriptionId" = $1`,
-      [TEST_STRIPE_SUBSCRIPTION_ID],
-    );
+    const { subscriptionId: billingSubscriptionId } =
+      await setupResourceCreditSubscription({
+        workspaceId,
+        periodStart: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000),
+        periodEnd: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000),
+        creditAmountMicro: 1_000_000,
+      });
 
     await query(
       `INSERT INTO core."billingProduct" ("stripeProductId", active, name, description, metadata)
