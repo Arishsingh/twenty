@@ -25,10 +25,10 @@ export const computeImmediateSubscriptionUpdate = ({
 
   if (
     toUpdatePrices.seats === currentPrices.seats &&
-    isSameApplicationItems(
-      currentPrices.applicationItems,
-      toUpdatePrices.applicationItems,
-    )
+    isSameApplicationItems({
+      currentApplicationItems: currentPrices.applicationItems,
+      toUpdateApplicationItems: toUpdatePrices.applicationItems,
+    })
   ) {
     return undefined;
   }

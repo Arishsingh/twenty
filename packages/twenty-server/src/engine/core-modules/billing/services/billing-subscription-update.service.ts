@@ -594,14 +594,20 @@ export class BillingSubscriptionUpdateService {
             price.billingProduct?.metadata?.productKey ===
             BillingProductKey.APPLICATION,
         )
-        .map((price) => ({
-          stripeProductId: price.stripeProductId,
-          stripePriceId: price.stripePriceId,
-          quantity:
-            items.find(
-              (item) => normalizePriceRef(item.price) === price.stripePriceId,
-            )?.quantity ?? 1,
-        })),
+        .map((price) => {
+          const { quantity } = findOrThrow(
+            items,
+            (item) => normalizePriceRef(item.price) === price.stripePriceId,
+          );
+
+          assertIsDefinedOrThrow(quantity);
+
+          return {
+            stripeProductId: price.stripeProductId,
+            stripePriceId: price.stripePriceId,
+            quantity,
+          };
+        }),
     };
   }
 

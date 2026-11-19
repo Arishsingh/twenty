@@ -317,7 +317,7 @@ import { AddRequestedRoleIdToApplicationFastInstanceCommand } from 'src/database
 import { BackfillApplicationRequestedRoleIdSlowInstanceCommand } from 'src/database/commands/upgrade-version-command/2-60/2-60-instance-command-slow-1794992743917-backfill-application-requested-role-id';
 import { AddViewSortRelationTargetFieldMetadataIdFastInstanceCommand } from 'src/database/commands/upgrade-version-command/2-61/2-61-instance-command-fast-1795006012069-add-view-sort-relation-target-field-metadata-id';
 import { AddNavigationMenuItemBuiltInSectionKeyFastInstanceCommand } from 'src/database/commands/upgrade-version-command/2-61/2-61-instance-command-fast-1795087899814-add-navigation-menu-item-built-in-section-key';
-import { AddAcceptedBillingPricesToApplicationFastInstanceCommand } from 'src/database/commands/upgrade-version-command/2-61/2-61-instance-command-fast-1795093146681-add-accepted-billing-prices-to-application';
+import { AddAcceptedBillingPricesToApplicationFastInstanceCommand } from 'src/database/commands/upgrade-version-command/2-61/2-61-instance-command-fast-1795106296043-add-accepted-billing-prices-to-application';
 
 export const INSTANCE_COMMANDS = [
   AddViewFieldGroupIdIndexOnViewFieldFastInstanceCommand,
