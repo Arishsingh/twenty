@@ -144,10 +144,6 @@ describe('Application price per connected account (integration)', () => {
     await syncApplication({
       manifest: {
         ...baseManifest,
-        application: {
-          ...baseManifest.application,
-          billing: { prices: [PRICE] },
-        },
         connectionProviders: [
           {
             universalIdentifier: randomUUID(),
@@ -167,11 +163,11 @@ describe('Application price per connected account (integration)', () => {
       expectToFail: false,
     });
 
-    // Apps synced from a local source are not billed: this one stands for an installed marketplace app.
     await query(
-      `UPDATE core."application" SET "sourceType" = 'npm', version = '1.0.0'
+      `UPDATE core."application"
+       SET "sourceType" = 'npm', version = '1.0.0', "acceptedBillingPrices" = $3::jsonb
        WHERE "universalIdentifier" = $1 AND "workspaceId" = $2`,
-      [appId, workspaceId],
+      [appId, workspaceId, JSON.stringify([PRICE])],
     );
     await query(
       `UPDATE core."billingSubscription" SET interval = 'month', status = 'active'

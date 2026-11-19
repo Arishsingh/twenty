@@ -34,8 +34,8 @@ describe('computeApplicationPriceQuantity', () => {
             version: '1.0.0',
             sourceType: ApplicationRegistrationSourceType.NPM,
             deletedAt: null,
-            billing: JSON.parse(
-              '{"prices":[{"universalIdentifier":"b7e41d08-2a93-4f5c-8d16-0c9e3b5a7f21","label":"Platform fee","type":"RECURRING","billingPeriod":"MONTHLY","amountCents":1000,"per":null}]}',
+            acceptedBillingPrices: JSON.parse(
+              '[{"universalIdentifier":"b7e41d08-2a93-4f5c-8d16-0c9e3b5a7f21","label":"Platform fee","type":"RECURRING","billingPeriod":"MONTHLY","amountCents":1000,"per":null}]',
             ),
           },
         },
