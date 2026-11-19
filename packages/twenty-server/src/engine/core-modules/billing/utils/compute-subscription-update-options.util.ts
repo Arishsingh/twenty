@@ -40,7 +40,8 @@ export const computeSubscriptionUpdateOptions = (
             proration: 'create_prorations',
             anchor: 'now',
           };
-    case SubscriptionUpdateType.QUANTITIES: {
+    case SubscriptionUpdateType.QUANTITIES:
+    case SubscriptionUpdateType.APPLICATIONS: {
       const shouldInvoiceImmediately =
         context?.isQuantityIncrease && !context?.isSendInvoice;
 

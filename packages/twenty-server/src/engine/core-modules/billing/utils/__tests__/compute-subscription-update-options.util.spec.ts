@@ -116,4 +116,15 @@ describe('computeSubscriptionUpdateOptions', () => {
       proration: 'create_prorations',
     });
   });
+
+  it('returns always_invoice when an applications update raises a quantity', () => {
+    const result = computeSubscriptionUpdateOptions(
+      { type: SubscriptionUpdateType.APPLICATIONS },
+      { isQuantityIncrease: true },
+    );
+
+    expect(result).toEqual({
+      proration: 'always_invoice',
+    });
+  });
 });

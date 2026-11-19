@@ -270,6 +270,25 @@ export class BillingSubscriptionUpdateService {
     });
   }
 
+  async syncApplications({
+    workspaceId,
+  }: {
+    workspaceId: string;
+  }): Promise<void> {
+    const billingSubscription =
+      await this.billingSubscriptionService.getCurrentBillingSubscription({
+        workspaceId,
+      });
+
+    if (!isDefined(billingSubscription)) {
+      return;
+    }
+
+    await this.updateSubscription(workspaceId, billingSubscription.id, {
+      type: SubscriptionUpdateType.APPLICATIONS,
+    });
+  }
+
   async updateSubscription(
     workspaceId: string,
     subscriptionId: string,
@@ -771,6 +790,7 @@ export class BillingSubscriptionUpdateService {
         return isDowngrade;
       }
       case SubscriptionUpdateType.QUANTITIES:
+      case SubscriptionUpdateType.APPLICATIONS:
         return false;
       case SubscriptionUpdateType.INTERVAL: {
         const currentInterval = subscription.interval;
@@ -841,6 +861,8 @@ export class BillingSubscriptionUpdateService {
           update.newResourceCreditPriceId,
           currentPrices,
         );
+      case SubscriptionUpdateType.APPLICATIONS:
+        return currentPrices;
     }
   }
 
