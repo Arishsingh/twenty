@@ -90,6 +90,7 @@ export class BillingApplicationSubscriptionService {
 
     if (
       !isDefined(billingSubscription) ||
+      billingSubscription.status === SubscriptionStatus.Incomplete ||
       billingSubscription.status === SubscriptionStatus.IncompleteExpired
     ) {
       return;
@@ -102,8 +103,7 @@ export class BillingApplicationSubscriptionService {
       ]);
 
     const isApplicationPriceBillingEnabled =
-      featureFlagsMap[FeatureFlagKey.IS_APPLICATION_PRICE_BILLING_ENABLED] ===
-      true;
+      featureFlagsMap[FeatureFlagKey.IS_APPLICATION_PRICE_BILLING_ENABLED];
 
     const declaredPrices = isApplicationPriceBillingEnabled
       ? collectDeclaredApplicationPrices({ flatApplicationMaps })
