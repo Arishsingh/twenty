@@ -42,6 +42,10 @@ export class BillingApplicationListener {
       return;
     }
 
+    await this.billingApplicationProductService.createMissingProducts(
+      workspaceId,
+    );
+
     await this.messageQueueService.add<UpdateSubscriptionQuantityJobData>(
       UpdateSubscriptionQuantityJob.name,
       { workspaceId },

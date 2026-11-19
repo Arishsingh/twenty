@@ -446,10 +446,6 @@ export class BillingPortalWorkspaceService {
       },
     );
 
-    await this.billingApplicationProductService.createMissingProducts(
-      workspace.id,
-    );
-
     const stripeSubscriptionLineItems = this.getStripeSubscriptionLineItems({
       quantity,
       billingPricesPerPlan,
