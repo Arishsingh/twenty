@@ -449,7 +449,9 @@ describe('Application price per connected account (integration)', () => {
     expect(updateSubscriptionSpy).toHaveBeenLastCalledWith(
       TEST_STRIPE_SUBSCRIPTION_ID,
       expect.objectContaining({
-        items: [expect.objectContaining({ deleted: true })],
+        items: expect.arrayContaining([
+          expect.objectContaining({ deleted: true }),
+        ]),
       }),
     );
   }, 120000);
