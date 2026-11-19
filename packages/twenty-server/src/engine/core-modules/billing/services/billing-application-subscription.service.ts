@@ -14,6 +14,7 @@ import { In, IsNull, Repository } from 'typeorm';
 import { BILLING_SUBSCRIPTION_STATE_LOCK_OPTIONS } from 'src/engine/core-modules/billing/constants/billing-subscription-state-lock-options.constant';
 import { BillingPriceEntity } from 'src/engine/core-modules/billing/entities/billing-price.entity';
 import { BillingSubscriptionItemEntity } from 'src/engine/core-modules/billing/entities/billing-subscription-item.entity';
+import { type BillingSubscriptionEntity } from 'src/engine/core-modules/billing/entities/billing-subscription.entity';
 import { BillingProductKey } from 'src/engine/core-modules/billing/enums/billing-product-key.enum';
 import { type SubscriptionInterval } from 'src/engine/core-modules/billing/enums/billing-subscription-interval.enum';
 import { SubscriptionStatus } from 'src/engine/core-modules/billing/enums/billing-subscription-status.enum';
@@ -57,25 +58,44 @@ export class BillingApplicationSubscriptionService {
     private readonly connectedAccountRepository: Repository<ConnectedAccountEntity>,
   ) {}
 
-  async syncApplicationItems(workspaceId: string): Promise<void> {
+  async syncApplicationItems({
+    workspaceId,
+    canSkipFromMirroredState,
+  }: {
+    workspaceId: string;
+    canSkipFromMirroredState: boolean;
+  }): Promise<void> {
     if (!this.twentyConfigService.get('IS_BILLING_ENABLED')) {
       return;
     }
 
     await this.cacheLockService.withLock(
-      () => this.applyApplicationItemsSync(workspaceId),
+      () =>
+        this.applyApplicationItemsSync({
+          workspaceId,
+          canSkipFromMirroredState,
+        }),
       buildBillingSubscriptionUpdateLockKey(workspaceId),
       BILLING_SUBSCRIPTION_STATE_LOCK_OPTIONS,
     );
   }
 
-  private async applyApplicationItemsSync(workspaceId: string): Promise<void> {
+  private async applyApplicationItemsSync({
+    workspaceId,
+    canSkipFromMirroredState,
+  }: {
+    workspaceId: string;
+    canSkipFromMirroredState: boolean;
+  }): Promise<void> {
     const billingSubscription =
       await this.billingSubscriptionService.getCurrentBillingSubscription({
         workspaceId,
       });
 
-    if (!isDefined(billingSubscription)) {
+    if (
+      !isDefined(billingSubscription) ||
+      billingSubscription.status === SubscriptionStatus.IncompleteExpired
+    ) {
       return;
     }
 
@@ -85,9 +105,11 @@ export class BillingApplicationSubscriptionService {
         'featureFlagsMap',
       ]);
 
-    const declaredPrices = featureFlagsMap[
-      FeatureFlagKey.IS_APPLICATION_PRICE_BILLING_ENABLED
-    ]
+    const isApplicationPriceBillingEnabled =
+      featureFlagsMap[FeatureFlagKey.IS_APPLICATION_PRICE_BILLING_ENABLED] ===
+      true;
+
+    const declaredPrices = isApplicationPriceBillingEnabled
       ? collectDeclaredApplicationPrices({ flatApplicationMaps })
       : [];
 
@@ -99,8 +121,10 @@ export class BillingApplicationSubscriptionService {
       );
 
     if (
+      (canSkipFromMirroredState || !isApplicationPriceBillingEnabled) &&
       !isNonEmptyArray(declaredPrices) &&
-      !isNonEmptyArray(applicationBillingSubscriptionItems)
+      !isNonEmptyArray(applicationBillingSubscriptionItems) &&
+      !(await this.hasApplicationPriceInMirroredPhases(billingSubscription))
     ) {
       return;
     }
@@ -296,6 +320,28 @@ export class BillingApplicationSubscriptionService {
 
     return new Map(
       rows.map(({ applicationId, count }) => [applicationId, Number(count)]),
+    );
+  }
+
+  private async hasApplicationPriceInMirroredPhases({
+    phases,
+  }: Pick<BillingSubscriptionEntity, 'phases'>): Promise<boolean> {
+    const phasePriceIds = (phases ?? []).flatMap(({ items }) =>
+      items.map(({ price }) => price),
+    );
+
+    if (!isNonEmptyArray(phasePriceIds)) {
+      return false;
+    }
+
+    const phasePrices = await this.billingPriceRepository.find({
+      where: { stripePriceId: In(phasePriceIds) },
+      relations: ['billingProduct'],
+    });
+
+    return phasePrices.some(
+      ({ billingProduct }) =>
+        billingProduct?.metadata?.productKey === BillingProductKey.APPLICATION,
     );
   }
 }

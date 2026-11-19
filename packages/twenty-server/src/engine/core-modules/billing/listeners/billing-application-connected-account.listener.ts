@@ -40,7 +40,7 @@ export class BillingApplicationConnectedAccountListener {
 
     await this.messageQueueService.add<SyncApplicationSubscriptionItemsJobData>(
       SyncApplicationSubscriptionItemsJob.name,
-      { workspaceId },
+      { workspaceId, canSkipFromMirroredState: true },
       {
         ...UPDATE_SUBSCRIPTION_QUANTITY_JOB_RETRY_OPTIONS,
         workspaceId,

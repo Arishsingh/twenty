@@ -1,13 +1,11 @@
 /* @license Enterprise */
 
-import {
-  type ApplicationBillingPrice,
-  isApplicationBillingPrice,
-} from 'twenty-shared/application';
+import { type ApplicationBillingPrice } from 'twenty-shared/application';
 import { isDefined } from 'twenty-shared/utils';
 
 import { ApplicationRegistrationSourceType } from 'src/engine/core-modules/application/application-registration/enums/application-registration-source-type.enum';
 import { type FlatApplication } from 'src/engine/core-modules/application/types/flat-application.type';
+import { toApplicationBillingPricesOrThrow } from 'src/engine/core-modules/application/utils/to-application-billing-prices-or-throw.util';
 
 export type DeclaredApplicationPrice = {
   applicationId: string;
@@ -45,23 +43,13 @@ export const collectDeclaredApplicationPrices = ({
         isDefined(application.version) &&
         application.sourceType !== ApplicationRegistrationSourceType.LOCAL,
     )
-    .flatMap((application) => {
-      const prices: unknown = application.acceptedBillingPrices;
-
-      if (!Array.isArray(prices)) {
-        return [];
-      }
-
-      const pricesByUniversalIdentifier = new Map(
-        prices
-          .filter(isApplicationBillingPrice)
-          .map((price) => [price.universalIdentifier, price]),
-      );
-
-      return [...pricesByUniversalIdentifier.values()].map((price) => ({
-        applicationId: application.id,
-        applicationUniversalIdentifier: application.universalIdentifier,
-        applicationName: application.name,
-        price,
-      }));
-    });
+    .flatMap((application) =>
+      toApplicationBillingPricesOrThrow(application.acceptedBillingPrices).map(
+        (price) => ({
+          applicationId: application.id,
+          applicationUniversalIdentifier: application.universalIdentifier,
+          applicationName: application.name,
+          price,
+        }),
+      ),
+    );

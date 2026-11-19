@@ -44,6 +44,26 @@ describe('buildApplicationSchedulePhasesUpdate', () => {
     ]);
   });
 
+  it('keeps the other settings of the next phase', () => {
+    const phases = buildApplicationSchedulePhasesUpdate({
+      currentPhase,
+      nextPhase: {
+        ...nextPhase,
+        billing_thresholds: { amount_gte: 5000 },
+      },
+      applicationPriceIds: new Set(['price_application_month']),
+      applicationItems: [],
+      subscriptionCurrentPeriodEnd: 200,
+    });
+
+    expect(phases?.[1]).toEqual({
+      start_date: 200,
+      proration_behavior: 'none',
+      billing_thresholds: { amount_gte: 5000 },
+      items: [{ price: 'price_base_month', quantity: 7 }],
+    });
+  });
+
   it('removes the application items of the next phase when none is left', () => {
     expect(build([])?.[1].items).toEqual([
       { price: 'price_base_month', quantity: 7 },

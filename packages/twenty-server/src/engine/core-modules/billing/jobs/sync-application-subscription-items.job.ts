@@ -9,6 +9,7 @@ import { MessageQueue } from 'src/engine/core-modules/message-queue/message-queu
 
 export type SyncApplicationSubscriptionItemsJobData = {
   workspaceId: string;
+  canSkipFromMirroredState: boolean;
 };
 
 @Processor({
@@ -23,9 +24,11 @@ export class SyncApplicationSubscriptionItemsJob {
   @Process(SyncApplicationSubscriptionItemsJob.name)
   async handle({
     workspaceId,
+    canSkipFromMirroredState,
   }: SyncApplicationSubscriptionItemsJobData): Promise<void> {
-    await this.billingApplicationSubscriptionService.syncApplicationItems(
+    await this.billingApplicationSubscriptionService.syncApplicationItems({
       workspaceId,
-    );
+      canSkipFromMirroredState,
+    });
   }
 }

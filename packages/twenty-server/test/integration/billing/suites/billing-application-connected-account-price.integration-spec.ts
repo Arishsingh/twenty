@@ -367,7 +367,7 @@ describe('Application price per connected account (integration)', () => {
 
     await getAppProviderByClassName<BillingApplicationSubscriptionService>(
       'BillingApplicationSubscriptionService',
-    ).syncApplicationItems(workspaceId);
+    ).syncApplicationItems({ workspaceId, canSkipFromMirroredState: true });
 
     expect(findApplicationItem()?.quantity).toBe(2);
 

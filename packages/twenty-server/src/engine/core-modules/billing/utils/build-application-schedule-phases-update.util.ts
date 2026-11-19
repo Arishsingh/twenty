@@ -21,7 +21,10 @@ export const buildApplicationSchedulePhasesUpdate = ({
   applicationItems: { price: string; quantity: number }[];
   subscriptionCurrentPeriodEnd: number;
 }): Phase[] | undefined => {
+  const { end_date: _nextPhaseEndDate, ...nextPhaseSettings } = nextPhase;
+
   const toUpdateNextPhase: Phase = {
+    ...nextPhaseSettings,
     start_date: subscriptionCurrentPeriodEnd,
     proration_behavior: 'none',
     items: [

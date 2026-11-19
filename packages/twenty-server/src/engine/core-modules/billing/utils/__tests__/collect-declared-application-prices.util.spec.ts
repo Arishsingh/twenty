@@ -47,16 +47,18 @@ describe('collectDeclaredApplicationPrices', () => {
     ]);
   });
 
-  it('leaves out a malformed price', () => {
-    expect(
+  it('throws on a malformed accepted price instead of dropping it', () => {
+    expect(() =>
       collect({
         acceptedBillingPrices: [{ ...price, amountCents: -1 }, price],
       }),
-    ).toHaveLength(1);
+    ).toThrow('Invalid or duplicated application billing prices');
   });
 
-  it('keeps one price per universal identifier', () => {
-    expect(collect({ acceptedBillingPrices: [price, price] })).toHaveLength(1);
+  it('throws on accepted prices sharing a universal identifier', () => {
+    expect(() => collect({ acceptedBillingPrices: [price, price] })).toThrow(
+      'Invalid or duplicated application billing prices',
+    );
   });
 
   it.each<[string, Partial<BillableApplication>]>([
