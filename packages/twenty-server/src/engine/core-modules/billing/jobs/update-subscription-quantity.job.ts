@@ -2,7 +2,6 @@
 
 import { Scope } from '@nestjs/common';
 
-import { BillingApplicationProductService } from 'src/engine/core-modules/billing/services/billing-application-product.service';
 import { BillingSubscriptionUpdateService } from 'src/engine/core-modules/billing/services/billing-subscription-update.service';
 import { getRecentRenewalDate } from 'src/engine/core-modules/billing/utils/get-recent-renewal-date.util';
 import { Process } from 'src/engine/core-modules/message-queue/decorators/process.decorator';
@@ -20,7 +19,6 @@ export type UpdateSubscriptionQuantityJobData = {
 export class UpdateSubscriptionQuantityJob {
   constructor(
     private readonly billingSubscriptionUpdateService: BillingSubscriptionUpdateService,
-    private readonly billingApplicationProductService: BillingApplicationProductService,
   ) {}
 
   @Process(UpdateSubscriptionQuantityJob.name)
@@ -28,10 +26,6 @@ export class UpdateSubscriptionQuantityJob {
     workspaceId,
     renewalDateMs,
   }: UpdateSubscriptionQuantityJobData): Promise<void> {
-    await this.billingApplicationProductService.createMissingProducts(
-      workspaceId,
-    );
-
     await this.billingSubscriptionUpdateService.syncSeats({
       workspaceId,
       renewalDate: getRecentRenewalDate({ renewalDateMs, nowMs: Date.now() }),
