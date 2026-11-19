@@ -89,6 +89,15 @@ describe('Application price per connected account (integration)', () => {
   const findApplicationItem = () =>
     stripeItems.find(({ price }) => price.id === applicationMonthPriceId);
 
+  const findUserWorkspace = async () => {
+    const [userWorkspace] = await query<{ id: string; userId: string }>(
+      `SELECT id, "userId" FROM core."userWorkspace" WHERE "workspaceId" = $1 LIMIT 1`,
+      [workspaceId],
+    );
+
+    return userWorkspace;
+  };
+
   const connectAccount = async ({
     handle,
     reconnectingConnectedAccountId = null,
@@ -99,10 +108,7 @@ describe('Application price per connected account (integration)', () => {
     const [provider] = await findConnectionProvidersByApplication(
       applicationUniversalIdentifier,
     );
-    const [userWorkspace] = await query<{ id: string; userId: string }>(
-      `SELECT id, "userId" FROM core."userWorkspace" WHERE "workspaceId" = $1 LIMIT 1`,
-      [workspaceId],
-    );
+    const userWorkspace = await findUserWorkspace();
 
     const connectedAccount =
       await getAppProviderByClassName<ConnectionProviderConnectedAccountService>(
@@ -131,10 +137,7 @@ describe('Application price per connected account (integration)', () => {
     applicationId: string;
     archivedAt?: Date | null;
   }): Promise<void> => {
-    const [userWorkspace] = await query<{ id: string }>(
-      `SELECT id FROM core."userWorkspace" WHERE "workspaceId" = $1 LIMIT 1`,
-      [workspaceId],
-    );
+    const userWorkspace = await findUserWorkspace();
 
     await query(
       `INSERT INTO core."connectedAccount"
