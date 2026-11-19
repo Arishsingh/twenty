@@ -115,6 +115,11 @@ describe('Application price billing (integration)', () => {
     });
     applicationMonthPriceId = `price_${applicationStripeProductId}`;
 
+    const billingSubscriptionService =
+      getAppProviderByClassName<BillingSubscriptionService>(
+        'BillingSubscriptionService',
+      );
+
     spies = [];
 
     const { subscriptionId: billingSubscriptionId } =
@@ -256,19 +261,11 @@ describe('Application price billing (integration)', () => {
           subscription: buildStripeSubscription(),
         })),
       jest
-        .spyOn(
-          getAppProviderByClassName<BillingSubscriptionService>(
-            'BillingSubscriptionService',
-          ),
-          'syncSubscriptionToDatabase',
-        )
-        .mockImplementation(
-          async () =>
-            ({}) as Awaited<
-              ReturnType<
-                BillingSubscriptionService['syncSubscriptionToDatabase']
-              >
-            >,
+        .spyOn(billingSubscriptionService, 'syncSubscriptionToDatabase')
+        .mockImplementation(async ({ workspaceId }) =>
+          billingSubscriptionService.getCurrentBillingSubscriptionOrThrow({
+            workspaceId,
+          }),
         ),
     ];
   }, 120000);

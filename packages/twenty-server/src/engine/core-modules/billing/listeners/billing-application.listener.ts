@@ -8,9 +8,9 @@ import { APPLICATION_INSTALLATION_CHANGED_EVENT } from 'src/engine/core-modules/
 import { type ApplicationInstallationChangedEvent } from 'src/engine/core-modules/application/types/application-installation-changed.type';
 import { UPDATE_SUBSCRIPTION_QUANTITY_JOB_RETRY_OPTIONS } from 'src/engine/core-modules/billing/constants/update-subscription-quantity-job-retry-options.constant';
 import {
-  UpdateSubscriptionQuantityJob,
-  type UpdateSubscriptionQuantityJobData,
-} from 'src/engine/core-modules/billing/jobs/update-subscription-quantity.job';
+  SyncSubscriptionApplicationsJob,
+  type SyncSubscriptionApplicationsJobData,
+} from 'src/engine/core-modules/billing/jobs/sync-subscription-applications.job';
 import { InjectMessageQueue } from 'src/engine/core-modules/message-queue/decorators/message-queue.decorator';
 import { MessageQueue } from 'src/engine/core-modules/message-queue/message-queue.constants';
 import { MessageQueueService } from 'src/engine/core-modules/message-queue/services/message-queue.service';
@@ -42,12 +42,8 @@ export class BillingApplicationListener {
       return;
     }
 
-    await this.billingApplicationProductService.createMissingProducts(
-      workspaceId,
-    );
-
-    await this.messageQueueService.add<UpdateSubscriptionQuantityJobData>(
-      UpdateSubscriptionQuantityJob.name,
+    await this.messageQueueService.add<SyncSubscriptionApplicationsJobData>(
+      SyncSubscriptionApplicationsJob.name,
       { workspaceId },
       {
         ...UPDATE_SUBSCRIPTION_QUANTITY_JOB_RETRY_OPTIONS,
