@@ -13,7 +13,7 @@ describe('buildApplicationStripeProductId', () => {
     expect(buildApplicationStripeProductId(params)).toBe(
       buildApplicationStripeProductId({
         ...params,
-        price: { ...params.price, currency: 'USD' },
+        price: { ...params.price },
       }),
     );
     expect(buildApplicationStripeProductId(params)).toMatch(

@@ -21,7 +21,7 @@ describe('buildApplicationStripePriceParams', () => {
     expect(
       buildApplicationStripePriceParams({
         stripeProductId: 'app_price_1',
-        price: { amountCents: 1000, currency: 'USD' },
+        price: { amountCents: 1000 },
         interval: SubscriptionInterval.Year,
       }),
     ).toEqual({

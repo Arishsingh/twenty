@@ -13,13 +13,11 @@ export const buildApplicationStripePriceParams = ({
   interval,
 }: {
   stripeProductId: string;
-  price: Pick<ApplicationBillingPrice, 'amountCents' | 'currency'>;
+  price: Pick<ApplicationBillingPrice, 'amountCents'>;
   interval: SubscriptionInterval;
 }): Stripe.PriceCreateParams => ({
   product: stripeProductId,
-  currency: (
-    price.currency ?? DEFAULT_APPLICATION_PRICE_CURRENCY
-  ).toLowerCase(),
+  currency: DEFAULT_APPLICATION_PRICE_CURRENCY.toLowerCase(),
   unit_amount:
     interval === SubscriptionInterval.Year
       ? price.amountCents * 12

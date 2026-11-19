@@ -11,10 +11,7 @@ export const buildApplicationStripeProductId = ({
   price,
 }: {
   applicationUniversalIdentifier: string;
-  price: Pick<
-    ApplicationBillingPrice,
-    'universalIdentifier' | 'amountCents' | 'currency'
-  >;
+  price: Pick<ApplicationBillingPrice, 'universalIdentifier' | 'amountCents'>;
 }): string =>
   `app_price_${createHash('sha256')
     .update(
@@ -22,7 +19,7 @@ export const buildApplicationStripeProductId = ({
         applicationUniversalIdentifier,
         price.universalIdentifier,
         price.amountCents,
-        price.currency ?? DEFAULT_APPLICATION_PRICE_CURRENCY,
+        DEFAULT_APPLICATION_PRICE_CURRENCY,
       ].join(':'),
     )
     .digest('hex')
