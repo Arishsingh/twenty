@@ -7,9 +7,9 @@ import { isDefined } from 'twenty-shared/utils';
 import { OnCustomBatchEvent } from 'src/engine/workspace-event-emitter/decorators/on-custom-batch-event.decorator';
 import { UPDATE_SUBSCRIPTION_QUANTITY_JOB_RETRY_OPTIONS } from 'src/engine/core-modules/billing/constants/update-subscription-quantity-job-retry-options.constant';
 import {
-  UpdateSubscriptionQuantityJob,
-  type UpdateSubscriptionQuantityJobData,
-} from 'src/engine/core-modules/billing/jobs/update-subscription-quantity.job';
+  SyncSubscriptionApplicationsJob,
+  type SyncSubscriptionApplicationsJobData,
+} from 'src/engine/core-modules/billing/jobs/sync-subscription-applications.job';
 import { BillingApplicationProductService } from 'src/engine/core-modules/billing/services/billing-application-product.service';
 import { InjectMessageQueue } from 'src/engine/core-modules/message-queue/decorators/message-queue.decorator';
 import { MessageQueue } from 'src/engine/core-modules/message-queue/message-queue.constants';
@@ -43,8 +43,8 @@ export class BillingApplicationConnectedAccountListener {
       return;
     }
 
-    await this.messageQueueService.add<UpdateSubscriptionQuantityJobData>(
-      UpdateSubscriptionQuantityJob.name,
+    await this.messageQueueService.add<SyncSubscriptionApplicationsJobData>(
+      SyncSubscriptionApplicationsJob.name,
       { workspaceId },
       {
         ...UPDATE_SUBSCRIPTION_QUANTITY_JOB_RETRY_OPTIONS,

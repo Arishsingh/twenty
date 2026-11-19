@@ -153,6 +153,11 @@ describe('Application price per connected account (integration)', () => {
   };
 
   beforeEach(async () => {
+    const billingSubscriptionService =
+      getAppProviderByClassName<BillingSubscriptionService>(
+        'BillingSubscriptionService',
+      );
+
     spies = [];
 
     workspaceId = await getSeededBillingWorkspaceId();
@@ -331,19 +336,11 @@ describe('Application price per connected account (integration)', () => {
           subscription: buildStripeSubscription(),
         })),
       jest
-        .spyOn(
-          getAppProviderByClassName<BillingSubscriptionService>(
-            'BillingSubscriptionService',
-          ),
-          'syncSubscriptionToDatabase',
-        )
-        .mockImplementation(
-          async () =>
-            ({}) as Awaited<
-              ReturnType<
-                BillingSubscriptionService['syncSubscriptionToDatabase']
-              >
-            >,
+        .spyOn(billingSubscriptionService, 'syncSubscriptionToDatabase')
+        .mockImplementation(async ({ workspaceId }) =>
+          billingSubscriptionService.getCurrentBillingSubscriptionOrThrow({
+            workspaceId,
+          }),
         ),
       jest
         .spyOn(
@@ -433,7 +430,7 @@ describe('Application price per connected account (integration)', () => {
 
     await getAppProviderByClassName<BillingSubscriptionUpdateService>(
       'BillingSubscriptionUpdateService',
-    ).syncSeats({ workspaceId });
+    ).syncApplications({ workspaceId });
 
     expect(findApplicationItem()?.quantity).toBe(2);
 
