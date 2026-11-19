@@ -26,21 +26,6 @@ export class StripeSubscriptionItemService {
     );
   }
 
-  async listSubscriptionItems(
-    stripeSubscriptionId: string,
-  ): Promise<Stripe.SubscriptionItem[]> {
-    const subscriptionItems: Stripe.SubscriptionItem[] = [];
-
-    for await (const subscriptionItem of this.stripe.subscriptionItems.list({
-      subscription: stripeSubscriptionId,
-      limit: 100,
-    })) {
-      subscriptionItems.push(subscriptionItem);
-    }
-
-    return subscriptionItems;
-  }
-
   async updateSubscriptionItem(
     stripeItemId: string,
     updateData: Stripe.SubscriptionItemUpdateParams,

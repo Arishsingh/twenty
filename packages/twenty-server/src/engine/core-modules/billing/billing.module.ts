@@ -21,10 +21,11 @@ import { BillingProductEntity } from 'src/engine/core-modules/billing/entities/b
 import { BillingSubscriptionItemEntity } from 'src/engine/core-modules/billing/entities/billing-subscription-item.entity';
 import { BillingSubscriptionEntity } from 'src/engine/core-modules/billing/entities/billing-subscription.entity';
 import { BillingRestApiExceptionFilter } from 'src/engine/core-modules/billing/filters/billing-api-exception.filter';
+import { ApplicationEntity } from 'src/engine/core-modules/application/application.entity';
 import { BillingApplicationConnectedAccountListener } from 'src/engine/core-modules/billing/listeners/billing-application-connected-account.listener';
+import { BillingApplicationListener } from 'src/engine/core-modules/billing/listeners/billing-application.listener';
 import { BillingWorkspaceMemberListener } from 'src/engine/core-modules/billing/listeners/billing-workspace-member.listener';
 import { BillingApplicationProductService } from 'src/engine/core-modules/billing/services/billing-application-product.service';
-import { BillingApplicationSubscriptionService } from 'src/engine/core-modules/billing/services/billing-application-subscription.service';
 import { BillingCreditAllowanceService } from 'src/engine/core-modules/billing/services/billing-credit-allowance.service';
 import { BillingCreditGrantService } from 'src/engine/core-modules/billing/services/billing-credit-grant.service';
 import { BillingCreditRolloverService } from 'src/engine/core-modules/billing/services/billing-credit-rollover.service';
@@ -78,6 +79,7 @@ import { WorkspaceCacheModule } from 'src/engine/workspace-cache/workspace-cache
       WorkspaceEntity,
       UserWorkspaceEntity,
       ConnectedAccountEntity,
+      ApplicationEntity,
     ]),
     MetricsModule,
     EnterpriseModule,
@@ -114,7 +116,8 @@ import { WorkspaceCacheModule } from 'src/engine/workspace-cache/workspace-cache
     WorkspaceCurrentBillingSubscriptionCacheService,
     BillingWorkspaceCreditAllowanceService,
     BillingApplicationProductService,
-    BillingApplicationSubscriptionService,
+    BillingApplicationListener,
+    provideWorkspaceScopedRepository(ApplicationEntity),
     provideWorkspaceScopedRepository(BillingArrangementEntity),
     provideWorkspaceScopedRepository(BillingCreditGrantEntity),
     provideWorkspaceScopedRepository(BillingCustomerEntity),
@@ -134,7 +137,7 @@ import { WorkspaceCacheModule } from 'src/engine/workspace-cache/workspace-cache
     BillingSeatService,
     ResourceCreditService,
     BillingWorkspaceCreditAllowanceService,
-    BillingApplicationSubscriptionService,
+    BillingApplicationProductService,
   ],
 })
 export class BillingModule {}

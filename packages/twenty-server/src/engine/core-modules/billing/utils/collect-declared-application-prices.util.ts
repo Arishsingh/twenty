@@ -15,28 +15,20 @@ export type DeclaredApplicationPrice = {
 };
 
 export const collectDeclaredApplicationPrices = ({
-  flatApplicationMaps,
+  applications,
 }: {
-  flatApplicationMaps: {
-    byId: Partial<
-      Record<
-        string,
-        Pick<
-          FlatApplication,
-          | 'id'
-          | 'universalIdentifier'
-          | 'name'
-          | 'version'
-          | 'sourceType'
-          | 'deletedAt'
-          | 'acceptedBillingPrices'
-        >
-      >
-    >;
-  };
+  applications: Pick<
+    FlatApplication,
+    | 'id'
+    | 'universalIdentifier'
+    | 'name'
+    | 'version'
+    | 'sourceType'
+    | 'deletedAt'
+    | 'acceptedBillingPrices'
+  >[];
 }): DeclaredApplicationPrice[] =>
-  Object.values(flatApplicationMaps.byId)
-    .filter(isDefined)
+  applications
     .filter(
       (application) =>
         !isDefined(application.deletedAt) &&

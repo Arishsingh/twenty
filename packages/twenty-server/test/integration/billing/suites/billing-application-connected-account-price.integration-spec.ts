@@ -18,15 +18,14 @@ import { waitForAllJobsToFinish } from 'test/integration/utils/wait-for-all-jobs
 import { type ApplicationBillingPrice } from 'twenty-shared/application';
 import { ConnectedAccountProvider, FeatureFlagKey } from 'twenty-shared/types';
 
-import type Stripe from 'stripe';
-
 import { type ConnectionProviderConnectedAccountService } from 'src/engine/core-modules/application/connection-provider/connection-provider-connected-account.service';
 import { type AppOAuthRevokeService } from 'src/engine/core-modules/application/connection-provider/refresh/services/app-oauth-revoke.service';
-import { type BillingApplicationSubscriptionService } from 'src/engine/core-modules/billing/services/billing-application-subscription.service';
+import { type BillingSeatService } from 'src/engine/core-modules/billing/services/billing-seat.service';
 import { type BillingSubscriptionService } from 'src/engine/core-modules/billing/services/billing-subscription.service';
-import { type StripeSubscriptionItemService } from 'src/engine/core-modules/billing/stripe/services/stripe-subscription-item.service';
+import { type BillingSubscriptionUpdateService } from 'src/engine/core-modules/billing/services/billing-subscription-update.service';
 import { type StripeSubscriptionScheduleService } from 'src/engine/core-modules/billing/stripe/services/stripe-subscription-schedule.service';
 import { type StripeSubscriptionService } from 'src/engine/core-modules/billing/stripe/services/stripe-subscription.service';
+import { type SubscriptionWithSchedule } from 'src/engine/core-modules/billing/types/billing-subscription-with-schedule.type';
 import { buildApplicationStripeProductId } from 'src/engine/core-modules/billing/utils/build-application-stripe-product-id.util';
 import { type FeatureFlagService } from 'src/engine/core-modules/feature-flag/services/feature-flag.service';
 import { type WorkspaceCacheService } from 'src/engine/workspace-cache/services/workspace-cache.service';
@@ -42,22 +41,52 @@ const PRICE: ApplicationBillingPrice = {
   per: 'CONNECTED_ACCOUNT',
 };
 
+const BASE_PRODUCT_ID = 'prod_base_connected_account_price_test';
+const BASE_MONTH_PRICE_ID = 'price_base_connected_account_price_test';
+const BASE_SUBSCRIPTION_ITEM_ID = 'si_base_connected_account_price_test';
+const CREDIT_SUBSCRIPTION_ITEM_ID = 'si_resource_credit_test';
+const CREDIT_PRICE_ID = 'price_resource_credit_test';
+
 const query = async <TRow>(
   sql: string,
   params: unknown[] = [],
 ): Promise<TRow[]> => globalThis.testDataSource.query(sql, params);
 
+const insertMonthAndYearPrices = async ({
+  stripeProductId,
+  monthPriceId,
+  monthAmountCents,
+}: {
+  stripeProductId: string;
+  monthPriceId: string;
+  monthAmountCents: number;
+}) =>
+  query(
+    `INSERT INTO core."billingPrice"
+       ("stripePriceId", "stripeProductId", active, currency, "taxBehavior",
+        type, "billingScheme", "usageType", interval, "unitAmount", metadata)
+     VALUES ($1, $3, true, 'usd', 'UNSPECIFIED', 'RECURRING', 'PER_UNIT', 'LICENSED', 'month', $4, '{}'),
+            ($2, $3, true, 'usd', 'UNSPECIFIED', 'RECURRING', 'PER_UNIT', 'LICENSED', 'year', $5, '{}')`,
+    [
+      monthPriceId,
+      `${monthPriceId}_year`,
+      stripeProductId,
+      monthAmountCents,
+      monthAmountCents * 12,
+    ],
+  );
+
 describe('Application price per connected account (integration)', () => {
   let workspaceId: string;
-  let appId: string;
-  let stripeProductId: string;
-  let monthPriceId: string;
+  let applicationUniversalIdentifier: string;
+  let applicationStripeProductId: string;
+  let applicationMonthPriceId: string;
   let stripeItems: StripeItem[];
   let updateSubscriptionSpy: jest.SpyInstance;
   let spies: jest.SpyInstance[];
 
   const findApplicationItem = () =>
-    stripeItems.find(({ price }) => price.id === monthPriceId);
+    stripeItems.find(({ price }) => price.id === applicationMonthPriceId);
 
   const connectAccount = async ({
     handle,
@@ -66,7 +95,9 @@ describe('Application price per connected account (integration)', () => {
     handle: string;
     reconnectingConnectedAccountId?: string | null;
   }): Promise<string> => {
-    const [provider] = await findConnectionProvidersByApplication(appId);
+    const [provider] = await findConnectionProvidersByApplication(
+      applicationUniversalIdentifier,
+    );
     const [userWorkspace] = await query<{ id: string; userId: string }>(
       `SELECT id, "userId" FROM core."userWorkspace" WHERE "workspaceId" = $1 LIMIT 1`,
       [workspaceId],
@@ -121,25 +152,28 @@ describe('Application price per connected account (integration)', () => {
   };
 
   beforeEach(async () => {
+    jest.useRealTimers();
+    spies = [];
+
     workspaceId = await getSeededBillingWorkspaceId();
-    appId = randomUUID();
-    stripeProductId = buildApplicationStripeProductId({
-      applicationUniversalIdentifier: appId,
+    applicationUniversalIdentifier = randomUUID();
+    applicationStripeProductId = buildApplicationStripeProductId({
+      applicationUniversalIdentifier,
       price: PRICE,
     });
-    monthPriceId = `price_month_${stripeProductId}`;
-    stripeItems = [];
+    applicationMonthPriceId = `price_${applicationStripeProductId}`;
 
     await setupApplicationForSync({
-      applicationUniversalIdentifier: appId,
+      applicationUniversalIdentifier,
       name: 'Test Application',
       description: 'App billed per connected account',
       sourcePath: 'test-connected-account-price',
     });
 
-    jest.useRealTimers();
-
-    const baseManifest = buildBaseManifest({ appId, roleId: randomUUID() });
+    const baseManifest = buildBaseManifest({
+      appId: applicationUniversalIdentifier,
+      roleId: randomUUID(),
+    });
 
     await syncApplication({
       manifest: {
@@ -167,31 +201,59 @@ describe('Application price per connected account (integration)', () => {
       `UPDATE core."application"
        SET "sourceType" = 'npm', version = '1.0.0', "acceptedBillingPrices" = $3::jsonb
        WHERE "universalIdentifier" = $1 AND "workspaceId" = $2`,
-      [appId, workspaceId, JSON.stringify([PRICE])],
+      [applicationUniversalIdentifier, workspaceId, JSON.stringify([PRICE])],
     );
     await query(
       `UPDATE core."billingSubscription" SET interval = 'month', status = 'active'
        WHERE "stripeSubscriptionId" = $1`,
       [TEST_STRIPE_SUBSCRIPTION_ID],
     );
+
+    const [{ id: billingSubscriptionId }] = await query<{ id: string }>(
+      `SELECT id FROM core."billingSubscription" WHERE "stripeSubscriptionId" = $1`,
+      [TEST_STRIPE_SUBSCRIPTION_ID],
+    );
+
     await query(
       `INSERT INTO core."billingProduct" ("stripeProductId", active, name, description, metadata)
-       VALUES ($1, true, 'Test Application - Per connected account', '', $2)`,
+       VALUES ($1, true, 'Pro', '', $2),
+              ($3, true, 'Test Application - Per connected account', '', $4)`,
       [
-        stripeProductId,
+        BASE_PRODUCT_ID,
+        JSON.stringify({
+          productKey: 'BASE_PRODUCT',
+          planKey: 'PRO',
+          priceUsageBased: 'LICENSED',
+        }),
+        applicationStripeProductId,
         JSON.stringify({
           productKey: 'APPLICATION',
           priceUsageBased: 'LICENSED',
         }),
       ],
     );
+    await insertMonthAndYearPrices({
+      stripeProductId: BASE_PRODUCT_ID,
+      monthPriceId: BASE_MONTH_PRICE_ID,
+      monthAmountCents: 900,
+    });
+    await insertMonthAndYearPrices({
+      stripeProductId: applicationStripeProductId,
+      monthPriceId: applicationMonthPriceId,
+      monthAmountCents: PRICE.amountCents,
+    });
     await query(
-      `INSERT INTO core."billingPrice"
-         ("stripePriceId", "stripeProductId", active, currency, "taxBehavior",
-          type, "billingScheme", "usageType", interval, "unitAmount", metadata)
-       VALUES ($1, $3, true, 'usd', 'UNSPECIFIED', 'RECURRING', 'PER_UNIT', 'LICENSED', 'month', 1000, '{}'),
-              ($2, $3, true, 'usd', 'UNSPECIFIED', 'RECURRING', 'PER_UNIT', 'LICENSED', 'year', 12000, '{}')`,
-      [monthPriceId, `price_year_${stripeProductId}`, stripeProductId],
+      `INSERT INTO core."billingSubscriptionItem"
+         ("billingSubscriptionId", "stripeSubscriptionId", "stripeProductId",
+          "stripePriceId", "stripeSubscriptionItemId", quantity, metadata)
+       VALUES ($1, $2, $3, $4, $5, 1, '{}')`,
+      [
+        billingSubscriptionId,
+        TEST_STRIPE_SUBSCRIPTION_ID,
+        BASE_PRODUCT_ID,
+        BASE_MONTH_PRICE_ID,
+        BASE_SUBSCRIPTION_ITEM_ID,
+      ],
     );
 
     await getAppProviderByClassName<FeatureFlagService>(
@@ -200,15 +262,30 @@ describe('Application price per connected account (integration)', () => {
       [FeatureFlagKey.IS_APPLICATION_PRICE_BILLING_ENABLED],
       workspaceId,
     );
-    await getAppProviderByClassName<WorkspaceCacheService>(
-      'WorkspaceCacheService',
-    ).invalidateAndRecompute(workspaceId, ['flatApplicationMaps']);
+
+    const billedSeats =
+      (await getAppProviderByClassName<BillingSeatService>(
+        'BillingSeatService',
+      ).computeCurrentBilledSeats(workspaceId)) ?? 0;
+
+    stripeItems = [
+      {
+        id: BASE_SUBSCRIPTION_ITEM_ID,
+        price: { id: BASE_MONTH_PRICE_ID },
+        quantity: billedSeats,
+      },
+      {
+        id: CREDIT_SUBSCRIPTION_ITEM_ID,
+        price: { id: CREDIT_PRICE_ID },
+        quantity: 1,
+      },
+    ];
 
     const buildStripeSubscription = () =>
       ({
         id: TEST_STRIPE_SUBSCRIPTION_ID,
         items: { data: stripeItems },
-      }) as unknown as Stripe.Subscription;
+      }) as unknown as SubscriptionWithSchedule;
 
     updateSubscriptionSpy = jest
       .spyOn(
@@ -219,7 +296,7 @@ describe('Application price per connected account (integration)', () => {
       )
       .mockImplementation(async (_stripeSubscriptionId, { items = [] }) => {
         for (const item of items) {
-          if (item.deleted === true) {
+          if (item.deleted) {
             stripeItems = stripeItems.filter(({ id }) => id !== item.id);
             continue;
           }
@@ -227,6 +304,7 @@ describe('Application price per connected account (integration)', () => {
           const existingItem = stripeItems.find(({ id }) => id === item.id);
 
           if (existingItem) {
+            existingItem.price = { id: item.price ?? existingItem.price.id };
             existingItem.quantity = item.quantity ?? existingItem.quantity;
             continue;
           }
@@ -250,24 +328,9 @@ describe('Application price per connected account (integration)', () => {
           ),
           'loadSubscriptionSchedule',
         )
-        .mockImplementation(
-          async () =>
-            ({ subscription: buildStripeSubscription() }) as Awaited<
-              ReturnType<
-                StripeSubscriptionScheduleService['loadSubscriptionSchedule']
-              >
-            >,
-        ),
-      jest
-        .spyOn(
-          getAppProviderByClassName<StripeSubscriptionItemService>(
-            'StripeSubscriptionItemService',
-          ),
-          'listSubscriptionItems',
-        )
-        .mockImplementation(
-          async () => stripeItems as unknown as Stripe.SubscriptionItem[],
-        ),
+        .mockImplementation(async () => ({
+          subscription: buildStripeSubscription(),
+        })),
       jest
         .spyOn(
           getAppProviderByClassName<BillingSubscriptionService>(
@@ -303,12 +366,16 @@ describe('Application price per connected account (integration)', () => {
       [workspaceId, ConnectedAccountProvider.APP],
     );
     await query(
-      `DELETE FROM core."billingPrice" WHERE "stripeProductId" = $1`,
-      [stripeProductId],
+      `DELETE FROM core."billingSubscriptionItem" WHERE "stripeSubscriptionItemId" = $1`,
+      [BASE_SUBSCRIPTION_ITEM_ID],
     );
     await query(
-      `DELETE FROM core."billingProduct" WHERE "stripeProductId" = $1`,
-      [stripeProductId],
+      `DELETE FROM core."billingPrice" WHERE "stripeProductId" = ANY($1)`,
+      [[BASE_PRODUCT_ID, applicationStripeProductId]],
+    );
+    await query(
+      `DELETE FROM core."billingProduct" WHERE "stripeProductId" = ANY($1)`,
+      [[BASE_PRODUCT_ID, applicationStripeProductId]],
     );
     await query(
       `DELETE FROM core."featureFlag" WHERE "workspaceId" = $1 AND key = $2`,
@@ -320,10 +387,10 @@ describe('Application price per connected account (integration)', () => {
     await query(
       `UPDATE core."application" SET "sourceType" = 'local'
        WHERE "universalIdentifier" = $1 AND "workspaceId" = $2`,
-      [appId, workspaceId],
+      [applicationUniversalIdentifier, workspaceId],
     );
     await cleanupApplicationAndAppRegistration({
-      applicationUniversalIdentifier: appId,
+      applicationUniversalIdentifier,
     });
   }, 120000);
 
@@ -352,7 +419,7 @@ describe('Application price per connected account (integration)', () => {
 
     const [application] = await query<{ id: string }>(
       `SELECT id FROM core."application" WHERE "universalIdentifier" = $1 AND "workspaceId" = $2`,
-      [appId, workspaceId],
+      [applicationUniversalIdentifier, workspaceId],
     );
     const [otherApplication] = await query<{ id: string }>(
       `SELECT id FROM core."application" WHERE "workspaceId" = $1 AND id <> $2 LIMIT 1`,
@@ -365,9 +432,9 @@ describe('Application price per connected account (integration)', () => {
     });
     await insertConnectedAccount({ applicationId: otherApplication.id });
 
-    await getAppProviderByClassName<BillingApplicationSubscriptionService>(
-      'BillingApplicationSubscriptionService',
-    ).syncApplicationItems({ workspaceId, canSkipFromMirroredState: true });
+    await getAppProviderByClassName<BillingSubscriptionUpdateService>(
+      'BillingSubscriptionUpdateService',
+    ).syncSeats({ workspaceId });
 
     expect(findApplicationItem()?.quantity).toBe(2);
 
@@ -377,6 +444,7 @@ describe('Application price per connected account (integration)', () => {
     expect(findApplicationItem()?.quantity).toBe(1);
 
     await deleteConnectedAccount(secondConnectedAccountId);
+    await waitForAllJobsToFinish();
 
     expect(findApplicationItem()).toBeUndefined();
     expect(updateSubscriptionSpy).toHaveBeenLastCalledWith(
