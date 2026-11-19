@@ -25,7 +25,12 @@ import { BillingCustomerEntity } from 'src/engine/core-modules/billing/entities/
 import { BillingSubscriptionItemEntity } from 'src/engine/core-modules/billing/entities/billing-subscription-item.entity';
 import { BillingSubscriptionEntity } from 'src/engine/core-modules/billing/entities/billing-subscription.entity';
 import { SubscriptionStatus } from 'src/engine/core-modules/billing/enums/billing-subscription-status.enum';
+import { UPDATE_SUBSCRIPTION_QUANTITY_JOB_RETRY_OPTIONS } from 'src/engine/core-modules/billing/constants/update-subscription-quantity-job-retry-options.constant';
 import { BillingWebhookEvent } from 'src/engine/core-modules/billing/enums/billing-webhook-events.enum';
+import {
+  SyncApplicationSubscriptionItemsJob,
+  type SyncApplicationSubscriptionItemsJobData,
+} from 'src/engine/core-modules/billing/jobs/sync-application-subscription-items.job';
 import { StripeCustomerService } from 'src/engine/core-modules/billing/stripe/services/stripe-customer.service';
 import { StripeSubscriptionScheduleService } from 'src/engine/core-modules/billing/stripe/services/stripe-subscription-schedule.service';
 import { StripeSubscriptionService } from 'src/engine/core-modules/billing/stripe/services/stripe-subscription.service';
@@ -56,6 +61,8 @@ export class BillingWebhookSubscriptionService {
     private readonly stripeCustomerService: StripeCustomerService,
     @InjectMessageQueue(MessageQueue.workspaceQueue)
     private readonly messageQueueService: MessageQueueService,
+    @InjectMessageQueue(MessageQueue.billingQueue)
+    private readonly billingMessageQueueService: MessageQueueService,
     // Stripe webhook upserts conflict-resolve globally on stripeSubscriptionId.
     // eslint-disable-next-line twenty/prefer-workspace-scoped-repository
     @InjectRepository(BillingSubscriptionEntity)
@@ -280,6 +287,18 @@ export class BillingWebhookSubscriptionService {
       await this.stripeSubscriptionService.updateSubscription(
         subscriptionWithSchedule.id,
         { pending_invoice_item_interval: { interval: 'month' } },
+      );
+    }
+
+    if (type !== BillingWebhookEvent.CUSTOMER_SUBSCRIPTION_DELETED) {
+      await this.billingMessageQueueService.add<SyncApplicationSubscriptionItemsJobData>(
+        SyncApplicationSubscriptionItemsJob.name,
+        { workspaceId, canSkipFromMirroredState: true },
+        {
+          ...UPDATE_SUBSCRIPTION_QUANTITY_JOB_RETRY_OPTIONS,
+          workspaceId,
+          isWorkspaceJob: true,
+        },
       );
     }
 

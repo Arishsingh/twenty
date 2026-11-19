@@ -111,6 +111,28 @@ describe('Application accepted billing prices', () => {
     });
   });
 
+  it('rejects an upgrade declaring an invalid price and keeps the accepted prices', async () => {
+    await uploadVersion({
+      version: '3.0.0',
+      prices: [{ ...TEN_DOLLARS_PRICE, amountCents: -1 }],
+    });
+    await installApplication({
+      input: { universalIdentifier: APP_UNIVERSAL_IDENTIFIER },
+      expectToFail: true,
+    });
+
+    expect(await findInstalledApplication()).toEqual({
+      version: '2.0.0',
+      declaredPrices: [TWENTY_DOLLARS_PER_MEMBER_PRICE],
+      acceptedBillingPrices: [TEN_DOLLARS_PRICE],
+    });
+
+    await uploadVersion({
+      version: '3.0.1',
+      prices: [TWENTY_DOLLARS_PER_MEMBER_PRICE],
+    });
+  });
+
   it('accepts the current prices on a new installation', async () => {
     await uninstallApplication({
       universalIdentifier: APP_UNIVERSAL_IDENTIFIER,
@@ -120,7 +142,7 @@ describe('Application accepted billing prices', () => {
     });
 
     expect(await findInstalledApplication()).toEqual({
-      version: '2.0.0',
+      version: '3.0.1',
       declaredPrices: [TWENTY_DOLLARS_PER_MEMBER_PRICE],
       acceptedBillingPrices: [TWENTY_DOLLARS_PER_MEMBER_PRICE],
     });

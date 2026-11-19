@@ -33,8 +33,9 @@ export class UpdateSubscriptionQuantityJob {
       renewalDate: getRecentRenewalDate({ renewalDateMs, nowMs: Date.now() }),
     });
 
-    await this.billingApplicationSubscriptionService.syncApplicationItems(
+    await this.billingApplicationSubscriptionService.syncApplicationItems({
       workspaceId,
-    );
+      canSkipFromMirroredState: true,
+    });
   }
 }

@@ -803,7 +803,7 @@ export class ApplicationService {
     try {
       await this.billingQueueService.add<SyncApplicationSubscriptionItemsJobData>(
         SyncApplicationSubscriptionItemsJob.name,
-        { workspaceId },
+        { workspaceId, canSkipFromMirroredState: false },
         {
           ...UPDATE_SUBSCRIPTION_QUANTITY_JOB_RETRY_OPTIONS,
           workspaceId,
