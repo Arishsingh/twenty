@@ -153,7 +153,6 @@ describe('Application price per connected account (integration)', () => {
   };
 
   beforeEach(async () => {
-    jest.useRealTimers();
     spies = [];
 
     workspaceId = await getSeededBillingWorkspaceId();
@@ -170,6 +169,8 @@ describe('Application price per connected account (integration)', () => {
       description: 'App billed per connected account',
       sourcePath: 'test-connected-account-price',
     });
+
+    jest.useRealTimers();
 
     const baseManifest = buildBaseManifest({
       appId: applicationUniversalIdentifier,
