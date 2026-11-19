@@ -6,8 +6,8 @@ export const isSubscriptionQuantityIncrease = ({
   currentPrices,
   toUpdatePrices,
 }: {
-  currentPrices: SubscriptionStripePrices;
-  toUpdatePrices: SubscriptionStripePrices;
+  currentPrices: Pick<SubscriptionStripePrices, 'seats' | 'applicationItems'>;
+  toUpdatePrices: Pick<SubscriptionStripePrices, 'seats' | 'applicationItems'>;
 }): boolean =>
   toUpdatePrices.seats > currentPrices.seats ||
   toUpdatePrices.applicationItems.some(

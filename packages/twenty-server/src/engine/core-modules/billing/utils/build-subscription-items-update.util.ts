@@ -29,7 +29,7 @@ export const buildSubscriptionItemsUpdate = ({
   stripeSubscriptionItems: (Pick<Stripe.SubscriptionItem, 'id'> & {
     price: Pick<Stripe.Price, 'id'>;
   })[];
-  currentPrices: SubscriptionStripePrices;
+  currentPrices: Pick<SubscriptionStripePrices, 'applicationItems'>;
   toUpdatePrices: SubscriptionStripePrices;
 }): Stripe.SubscriptionUpdateParams.Item[] => {
   const managedItems = billingSubscriptionItems.flatMap(
