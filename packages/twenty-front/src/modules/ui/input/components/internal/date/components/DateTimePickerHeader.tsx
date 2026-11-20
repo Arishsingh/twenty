@@ -19,7 +19,7 @@ import { Temporal } from 'temporal-polyfill';
 import { SOURCE_LOCALE } from 'twenty-shared/translations';
 import { isDefined } from 'twenty-shared/utils';
 import { doNotTranslate } from 'twenty-shared/i18n';
-import { LightIconButton } from 'twenty-ui/components/input';
+import { LightButton, LightIconButton } from 'twenty-ui/components/input';
 import { Dropdown } from 'twenty-ui/components/navigation';
 import { Field, Input, InputGroup } from 'twenty-ui/primitives/input';
 import {
@@ -110,6 +110,13 @@ export const DateTimePickerHeader = ({
 
   const currentWorkspaceMember = useAtomStateValue(currentWorkspaceMemberState);
   const userLocale = currentWorkspaceMember?.locale ?? SOURCE_LOCALE;
+  const displayedMonthLabel = new Intl.DateTimeFormat(userLocale, {
+    month: 'short',
+    year: 'numeric',
+    timeZone: doNotTranslate('UTC'),
+  }).format(
+    new Date(Date.UTC(displayedMonth.year, displayedMonth.month - 1, 1)),
+  );
 
   const {
     monthSelectDropdownId,
@@ -172,12 +179,13 @@ export const DateTimePickerHeader = ({
           <DropdownRoot dropdownId={monthYearPanelDropdownId} type="panel">
             <Dropdown.Trigger
               render={
-                <LightIconButton
+                <LightButton
                   size="md"
                   aria-label={t`Select month and year`}
+                  startIcon={<IconCalendar size={TIME_INPUT_ICON_SIZE} />}
                 >
-                  <IconCalendar />
-                </LightIconButton>
+                  {displayedMonthLabel}
+                </LightButton>
               }
             />
             <DropdownContent

@@ -94,7 +94,12 @@ export const Default: Story = {
     await expect(canvas.getByRole('textbox', { name: 'Time' })).toBeVisible();
     await expect(
       canvas.getByRole('button', { name: 'Select month and year' }),
-    ).toBeVisible();
+    ).toHaveTextContent('Jan 2023');
+
+    await userEvent.click(canvas.getByRole('button', { name: 'Next' }));
+    await expect(
+      canvas.getByRole('button', { name: 'Select month and year' }),
+    ).toHaveTextContent('Feb 2023');
   },
 };
 

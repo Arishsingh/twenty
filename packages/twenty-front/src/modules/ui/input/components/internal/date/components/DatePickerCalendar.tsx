@@ -1,4 +1,5 @@
 import { currentWorkspaceMemberState } from '@/auth/states/currentWorkspaceMemberState';
+import { getDatePickerWeekdayLabels } from '@/localization/utils/getDatePickerWeekdayLabels';
 import { getDatePickerWeekStartOrThrow } from '@/ui/input/components/internal/date/utils/getDatePickerWeekStartOrThrow';
 import { useAtomStateValue } from '@/ui/utilities/state/jotai/hooks/useAtomStateValue';
 import { useState } from 'react';
@@ -37,6 +38,7 @@ export const DatePickerCalendar = ({
 }: DatePickerCalendarProps) => {
   const { t } = useLingui();
   const currentWorkspaceMember = useAtomStateValue(currentWorkspaceMemberState);
+  const userLocale = currentWorkspaceMember?.locale ?? SOURCE_LOCALE;
   const currentToday = today ?? Temporal.Now.plainDateISO().toString();
   const referenceDate = highlightedRange?.start ?? value ?? currentToday;
   const referenceKey = isDefined(highlightedRange)
@@ -65,7 +67,8 @@ export const DatePickerCalendar = ({
         weekStart ??
         getDatePickerWeekStartOrThrow(currentWorkspaceMember?.calendarStartDay)
       }
-      locale={SOURCE_LOCALE}
+      locale={userLocale}
+      weekdayLabels={getDatePickerWeekdayLabels(userLocale)}
       previousMonthLabel={t`Previous`}
       nextMonthLabel={t`Next`}
       monthLabel={t`Month`}
